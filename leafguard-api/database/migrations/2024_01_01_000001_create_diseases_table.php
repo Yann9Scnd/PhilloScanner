@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('image_url');
             $table->text('description');
             $table->text('symptoms');
-            $table->text('treatment_steps');
+            $table->text('prevention_steps');
             $table->timestamps();
         });
     }

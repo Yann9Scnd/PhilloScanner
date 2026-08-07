@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/disease_model.dart';
-import '../models/scan_result_model.dart';
 import '../repositories/scan_repository.dart';
 import '../theme/app_theme.dart';
-import 'detail_scan_screen.dart';
+import 'disease_detail_screen.dart';
 
-/// Tab Daun — Ensiklopedia Penyakit & Hasil Analisis ESP32-CAM
+/// Tab Daun — Ensiklopedia Database Penyakit Tanaman
 class DaunTabView extends StatefulWidget {
   const DaunTabView({super.key});
 
@@ -17,7 +16,7 @@ class _DaunTabViewState extends State<DaunTabView> {
   final ScanRepository _scanRepository = ScanRepository();
   int _selectedFilter = 0;
   String _searchQuery = '';
-  final _filters = ['Semua', 'Jamur', 'Bakteri', 'Virus'];
+  final _filters = ['Semua', 'Jamur', 'Bakteri', 'Virus', 'Hama'];
 
   @override
   Widget build(BuildContext context) {
@@ -30,45 +29,18 @@ class _DaunTabViewState extends State<DaunTabView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. ESP32 Scan History Banner / Latest Detection
-          FutureBuilder<List<ScanResultModel>>(
-            future: _scanRepository.getScanHistory(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                final latestScan = snapshot.data!.first;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 8),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.center_focus_strong_rounded,
-                              size: 20, color: AppColors.primary),
-                          const SizedBox(width: 8),
-                          Text('Hasil Analisis Foto ESP32',
-                              style: AppTextStyles.titleMd(
-                                  color: AppColors.primary)),
-                        ],
-                      ),
-                    ),
-                    _EspScanCard(
-                      scan: latestScan,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DetailScanScreen(scan: latestScan),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                );
-              }
-              return const SizedBox.shrink();
-            },
+          // 1. Header
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 8),
+            child: Row(
+              children: [
+                const Icon(Icons.menu_book_rounded,
+                    size: 20, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text('Database Penyakit Tanaman',
+                    style: AppTextStyles.titleMd(color: AppColors.primary)),
+              ],
+            ),
           ),
 
           // 2. Search Bar
@@ -141,14 +113,7 @@ class _DaunTabViewState extends State<DaunTabView> {
           ),
           const SizedBox(height: 20),
 
-          // 4. Disease Dataset Section Header
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 12),
-            child: Text('Dataset Penyakit Tanaman',
-                style: AppTextStyles.titleMd(color: AppColors.primary)),
-          ),
-
-          // 5. Disease Cards from Database
+          // 4. Disease Cards from Database
           FutureBuilder<List<DiseaseModel>>(
             future: _scanRepository.getDiseases(category: selectedCategory),
             builder: (context, snapshot) {
@@ -198,107 +163,6 @@ class _DaunTabViewState extends State<DaunTabView> {
                 }).toList(),
               );
             },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EspScanCard extends StatelessWidget {
-  final ScanResultModel scan;
-  final VoidCallback onTap;
-
-  const _EspScanCard({required this.scan, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 4,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  scan.imageUrl,
-                  width: 72,
-                  height: 72,
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, e, st) => Container(
-                    width: 72,
-                    height: 72,
-                    color: AppColors.surfaceContainer,
-                    child: const Icon(Icons.eco, color: AppColors.primary),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text('IDENTIFIKASI AI',
-                            style: AppTextStyles.labelMd(
-                                    color: AppColors.secondary)
-                                .copyWith(
-                                    letterSpacing: 1,
-                                    fontWeight: FontWeight.w600)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondaryContainer,
-                            borderRadius: BorderRadius.circular(9999),
-                          ),
-                          child: Text('${scan.confidence}% Acc',
-                              style: AppTextStyles.labelMd(
-                                      color: AppColors.onSecondaryContainer)
-                                  .copyWith(fontWeight: FontWeight.bold)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(scan.diseaseName,
-                        style: AppTextStyles.titleMd(color: AppColors.primary)),
-                    Text('${scan.deviceId} • ${scan.timestamp}',
-                        style: AppTextStyles.labelMd(
-                            color: AppColors.onSurfaceVariant)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: onTap,
-              icon: const Icon(Icons.analytics_outlined, size: 18),
-              label: const Text('Lihat Hasil Analisis AI & Saran'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
           ),
         ],
       ),
@@ -373,19 +237,7 @@ class _DiseaseCard extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => DetailScanScreen(
-                          scan: ScanResultModel(
-                            deviceId: 'ESP32-CAM Sektor B-04',
-                            imageUrl: disease.imageUrl,
-                            diseaseName: disease.name,
-                            scientificName: disease.scientificName,
-                            severity: 'Sedang',
-                            confidence: 90,
-                            timestamp: 'Data Dataset',
-                            soilMoisture: '60%',
-                            aiRecommendations: disease.treatmentSteps,
-                          ),
-                        ),
+                        builder: (_) => DiseaseDetailScreen(disease: disease),
                       ),
                     );
                   },

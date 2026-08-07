@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../screens/detail_scan_screen.dart';
 import '../screens/status_perangkat_screen.dart';
+import '../widgets/bmkg_weather_card.dart';
 import '../widgets/quick_stat_card.dart';
 import '../widgets/recent_activity_item.dart';
 
@@ -169,71 +169,8 @@ class BerandaTabView extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Leaf Health Alert
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.errorContainer,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.error.withValues(alpha: 0.20)),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1))
-              ],
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withValues(alpha: 0.10),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.warning_amber_rounded,
-                      size: 24, color: AppColors.error),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Deteksi Waspada',
-                          style: AppTextStyles.titleMd(color: AppColors.onErrorContainer)),
-                      const SizedBox(height: 2),
-                      Text('Potensi Bercak Daun terdeteksi.',
-                          style: AppTextStyles.bodyMd(
-                                  color: AppColors.onErrorContainer.withValues(alpha: 0.80))
-                              .copyWith(fontSize: 13)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const DetailScanScreen()));
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: AppColors.onError,
-                    elevation: 2,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: Text('Detail',
-                      style: AppTextStyles.labelLg(color: AppColors.onError)
-                          .copyWith(fontWeight: FontWeight.w500)),
-                ),
-              ],
-            ),
-          ),
+          // Monitoring Cuaca Lingkungan BMKG
+          const BmkgWeatherCard(),
           const SizedBox(height: 16),
 
           // Secondary Navigation Cards

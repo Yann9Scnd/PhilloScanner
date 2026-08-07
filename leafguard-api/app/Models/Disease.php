@@ -13,6 +13,6 @@ class Disease extends Model
         'image_url',
         'description',
         'symptoms',
-        'treatment_steps',
+        'prevention_steps',
     ];
 }
