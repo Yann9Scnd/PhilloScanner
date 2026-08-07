@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import '../models/disease_model.dart';
 import '../models/scan_result_model.dart';
 
@@ -11,6 +13,9 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
+    if (kIsWeb) {
+      databaseFactory = databaseFactoryFfiWeb;
+    }
     _database = await _initDB('phylloscanner.db');
     return _database!;
   }
