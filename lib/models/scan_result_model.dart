@@ -8,6 +8,8 @@ class ScanResultModel {
   final int confidence; // e.g. 92%
   final String timestamp;
   final String soilMoisture;
+  final String sector;
+  final double temperatureAtScan;
   final List<String> aiRecommendations;
 
   const ScanResultModel({
@@ -20,6 +22,8 @@ class ScanResultModel {
     required this.confidence,
     required this.timestamp,
     required this.soilMoisture,
+    this.sector = 'Greenhouse Sektor A',
+    this.temperatureAtScan = 28.0,
     required this.aiRecommendations,
   });
 
@@ -34,6 +38,8 @@ class ScanResultModel {
       'confidence': confidence,
       'timestamp': timestamp,
       'soil_moisture': soilMoisture,
+      'sector': sector,
+      'temperature_at_scan': temperatureAtScan.toString(),
       'ai_recommendations': aiRecommendations.join('||'),
     };
   }
@@ -50,6 +56,10 @@ class ScanResultModel {
       confidence: map['confidence'] as int? ?? 0,
       timestamp: map['timestamp'] as String? ?? '',
       soilMoisture: map['soil_moisture'] as String? ?? '0%',
+      sector: map['sector'] as String? ?? 'Greenhouse Sektor A',
+      temperatureAtScan: double.tryParse(
+              (map['temperature_at_scan'] as String? ?? '').replaceAll(RegExp(r'[^0-9.]'), '')) ??
+          28.0,
       aiRecommendations: recsString.isNotEmpty ? recsString.split('||') : [],
     );
   }

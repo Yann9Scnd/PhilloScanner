@@ -8,6 +8,9 @@ class QuickStatCard extends StatelessWidget {
   final Color iconColor;
   final String label;
   final String value;
+  final String? subtitle;
+  final Color? subtitleColor;
+  final VoidCallback? onTap;
 
   const QuickStatCard({
     super.key,
@@ -16,11 +19,14 @@ class QuickStatCard extends StatelessWidget {
     required this.iconColor,
     required this.label,
     required this.value,
+    this.subtitle,
+    this.subtitleColor,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerLowest,
@@ -52,8 +58,23 @@ class QuickStatCard extends StatelessWidget {
           Text(value,
               style: AppTextStyles.titleLg(color: AppColors.onSurface),
               textAlign: TextAlign.center),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(subtitle!,
+                style: AppTextStyles.labelMd(
+                        color: subtitleColor ?? AppColors.secondary)
+                    .copyWith(fontSize: 10, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center),
+          ],
         ],
       ),
+    );
+
+    if (onTap == null) return content;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: content,
     );
   }
 }

@@ -10,6 +10,10 @@ class SensorReading extends Model
         'device_id',
         'soil_moisture',
         'temperature',
+        'air_humidity',
+        'light_intensity',
+        'water_tank_level',
+        'soil_ph',
         'pump_status',
         'timestamp',
     ];

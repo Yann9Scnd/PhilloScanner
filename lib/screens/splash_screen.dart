@@ -16,6 +16,7 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _pulseAnimation;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -50,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     // Navigate to DashboardScreen after 2.5 seconds with a smooth fade transition
-    Timer(const Duration(milliseconds: 2600), () {
+    _timer = Timer(const Duration(milliseconds: 2600), () {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
@@ -72,6 +73,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    _timer?.cancel();
     _controller.dispose();
     super.dispose();
   }

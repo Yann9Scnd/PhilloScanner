@@ -15,6 +15,8 @@ class ScanResult extends Model
         'confidence',
         'timestamp',
         'soil_moisture',
+        'sector',
+        'temperature_at_scan',
         'ai_recommendations',
     ];
 

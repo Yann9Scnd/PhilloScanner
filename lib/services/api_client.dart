@@ -1,10 +1,11 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 
+import '../models/actuator_state_model.dart';
 import '../models/disease_model.dart';
 import '../models/scan_result_model.dart';
 import '../models/sensor_data_model.dart';
+import 'esp_service.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -17,18 +18,25 @@ class ApiException implements Exception {
 }
 
 /// HTTP client untuk komunikasi dengan backend Laravel.
-///
-/// URL server dikonfigurasi saat build/run:
-///   flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8000
 class ApiClient {
   ApiClient({String? baseUrl, http.Client? client})
-      : _baseUrl = baseUrl ?? defaultBaseUrl,
+      : _baseUrl = baseUrl ?? _effectiveBaseUrl,
         _client = client ?? http.Client();
 
   static const String defaultBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://localhost:8000',
   );
+
+  /// Base URL efektif: pakai serverIp hasil konfigurasi EspConfigDialog
+  /// jika user sudah menyimpan, selain itu gunakan API_BASE_URL/locahost.
+  static String get _effectiveBaseUrl {
+    final esp = EspService.instance;
+    if (esp.isServerConfigured && esp.serverIp.trim().isNotEmpty) {
+      return 'http://${esp.serverIp.trim()}:8000';
+    }
+    return defaultBaseUrl;
+  }
 
   final String _baseUrl;
   final http.Client _client;
@@ -111,5 +119,58 @@ class ApiClient {
     return list
         .map((e) => SensorDataModel.fromMap((e as Map).cast<String, dynamic>()))
         .toList();
+  }
+
+  /// GET /api/sensor-readings/latest
+  Future<SensorDataModel?> fetchLatestSensorReading() async {
+    try {
+      final res = await _client.get(_uri('sensor-readings/latest'));
+      if (res.statusCode == 404) return null;
+      if (res.statusCode != 200) return null;
+      return SensorDataModel.fromMap(
+          (jsonDecode(res.body) as Map).cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// POST /api/sensor-readings
+  Future<bool> addSensorReading(SensorDataModel reading) async {
+    try {
+      final res = await _client.post(
+        _uri('sensor-readings'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(reading.toMap()),
+      );
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// GET /api/actuators
+  Future<ActuatorStateModel?> fetchActuatorState() async {
+    try {
+      final res = await _client.get(_uri('actuators'));
+      if (res.statusCode != 200) return null;
+      return ActuatorStateModel.fromMap(
+          (jsonDecode(res.body) as Map).cast<String, dynamic>());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// POST /api/actuators
+  Future<bool> updateActuatorState(ActuatorStateModel state) async {
+    try {
+      final res = await _client.post(
+        _uri('actuators'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(state.toMap()),
+      );
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (_) {
+      return false;
+    }
   }
 }

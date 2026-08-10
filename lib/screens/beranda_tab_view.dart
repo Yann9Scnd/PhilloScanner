@@ -1,14 +1,41 @@
 import 'package:flutter/material.dart';
+import '../models/activity_log_model.dart';
+import '../models/actuator_state_model.dart';
+import '../models/sensor_data_model.dart';
 import '../theme/app_theme.dart';
-import '../screens/status_perangkat_screen.dart';
 import '../widgets/bmkg_weather_card.dart';
+import '../widgets/esp_config_dialog.dart';
 import '../widgets/quick_stat_card.dart';
 import '../widgets/recent_activity_item.dart';
 
-class BerandaTabView extends StatelessWidget {
-  final VoidCallback onNavigateToDaun;
+class BerandaTabView extends StatefulWidget {
+  final SensorDataModel sensorData;
+  final ActuatorStateModel actuatorState;
+  final List<ActivityLogModel> activities;
+  final Function(int tabIndex) onNavigateToTab;
+  final VoidCallback? onTogglePumpMode;
 
-  const BerandaTabView({super.key, required this.onNavigateToDaun});
+  const BerandaTabView({
+    super.key,
+    required this.sensorData,
+    required this.actuatorState,
+    required this.activities,
+    required this.onNavigateToTab,
+    this.onTogglePumpMode,
+  });
+
+  @override
+  State<BerandaTabView> createState() => _BerandaTabViewState();
+}
+
+class _BerandaTabViewState extends State<BerandaTabView> {
+  String _selectedSector = 'Kebun Cabai Presisi (2 Node ESP32)';
+
+  final List<String> _sectors = [
+    'Kebun Cabai Presisi (2 Node ESP32)',
+    'Sektor A - Bedeng Barat',
+    'Sektor B - Bedeng Timur',
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -18,35 +45,88 @@ class BerandaTabView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Greeting
+          // Header Greeting Row
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Halo, Petani!',
-                  style: AppTextStyles.headlineSm(color: AppColors.onSurface)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text('Halo, Petani!',
+                              style: AppTextStyles.headlineSm(color: AppColors.onSurface),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF4CAF50),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.cloud_done_rounded, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text('Sistem Terhubung & Stabil',
+                              style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
               const SizedBox(width: 8),
-              // Animated online indicator
-              Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF4CAF50),
-                  shape: BoxShape.circle,
+
+              // Sector Switcher Dropdown
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.30)),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _selectedSector,
+                      isDense: true,
+                      isExpanded: true,
+                      icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                      style: AppTextStyles.labelMd(color: AppColors.onSurface)
+                          .copyWith(fontWeight: FontWeight.w600, fontSize: 11),
+                      items: _sectors.map((s) {
+                        return DropdownMenuItem<String>(
+                          value: s,
+                          child: Text(s, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _selectedSector = val);
+                        }
+                      },
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const Icon(Icons.cloud_done_rounded, size: 16, color: AppColors.primary),
-              const SizedBox(width: 6),
-              Text('Sistem Terhubung & Stabil',
-                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)),
-            ],
-          ),
           const SizedBox(height: 16),
 
-          // Hero Section: Greenhouse Status
+          // Hero Section: Greenhouse Banner
           Container(
             height: 208,
             decoration: BoxDecoration(
@@ -62,10 +142,9 @@ class BerandaTabView extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 children: [
-                  // Background image
                   Positioned.fill(
                     child: Image.network(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBhcB4wvj13TRz4oOrXamaCSj6hpQUo0FNUX4WwUCvr11jQ585NCadLLTKch3NfFB2cwRPhn3bdaZkGoNDApCTU7Wu9BJ0SBk2Fz5CysGV1XI-Udb-1iS3b7jd1uBj7ZLtM8mbc9y8oRSOUsD2Pp9kEG5x1_ITkONzzIB-rEyUNcrS9O9goD2tBHZxAdJmG0DCpAYledD9iFDctMctJ-y0Zuns5dLMp5GGGhtrioDSj5JPC3UfW5G6fBg',
+                      'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=1000&auto=format&fit=crop',
                       fit: BoxFit.cover,
                       errorBuilder: (context, e, s) => Container(
                         color: AppColors.primaryContainer,
@@ -74,7 +153,6 @@ class BerandaTabView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Gradient overlay
                   Positioned.fill(
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -90,7 +168,6 @@ class BerandaTabView extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Content
                   Positioned(
                     left: 20,
                     bottom: 20,
@@ -102,12 +179,11 @@ class BerandaTabView extends StatelessWidget {
                             style: AppTextStyles.labelMd(color: AppColors.primaryFixedDim)
                                 .copyWith(letterSpacing: 1.2, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        Text('Greenhouse Sektor A',
+                        Text(_selectedSector,
                             style: AppTextStyles.headlineSm(color: AppColors.onPrimary)),
                         const SizedBox(height: 8),
                         Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: AppColors.tertiaryContainer.withValues(alpha: 0.90),
                             borderRadius: BorderRadius.circular(9999),
@@ -118,9 +194,13 @@ class BerandaTabView extends StatelessWidget {
                               const Icon(Icons.check_circle_rounded,
                                   size: 16, color: AppColors.tertiaryFixed),
                               const SizedBox(width: 4),
-                              Text('Kondisi Ideal',
-                                  style: AppTextStyles.labelMd(color: AppColors.tertiaryFixed)
-                                      .copyWith(fontWeight: FontWeight.w500)),
+                              Flexible(
+                                child: Text('Kondisi Ideal (650 Tanaman Cabai)',
+                                    style: AppTextStyles.labelMd(color: AppColors.tertiaryFixed)
+                                        .copyWith(fontWeight: FontWeight.w500, fontSize: 11),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                              ),
                             ],
                           ),
                         ),
@@ -135,42 +215,132 @@ class BerandaTabView extends StatelessWidget {
 
           // Quick Stats Grid (3 columns)
           Row(
-            children: const [
+            children: [
               Expanded(
                 child: QuickStatCard(
                   icon: Icons.water_drop_outlined,
-                  iconBgColor: Color(0x1A003B58),
+                  iconBgColor: const Color(0x1A003B58),
                   iconColor: AppColors.primary,
                   label: 'Tanah',
-                  value: '62%',
+                  value: '${widget.sensorData.soilMoisture.round()}%',
+                  subtitle: 'Optimal',
+                  subtitleColor: const Color(0xFF16A34A),
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: QuickStatCard(
                   icon: Icons.thermostat,
-                  iconBgColor: Color(0x1A835500),
+                  iconBgColor: const Color(0x1A835500),
                   iconColor: AppColors.secondary,
                   label: 'Suhu',
-                  value: '28°C',
+                  value: '${widget.sensorData.temperature.round()}°C',
+                  subtitle: 'Ideal 24-30°',
                 ),
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
                 child: QuickStatCard(
                   icon: Icons.settings_input_component,
-                  iconBgColor: Color(0x1A003D48),
-                  iconColor: AppColors.tertiary,
+                  iconBgColor: widget.actuatorState.pumpAutoMode
+                      ? const Color(0x33F59E0B)
+                      : const Color(0x3304A96B),
+                  iconColor: widget.actuatorState.pumpAutoMode
+                      ? const Color(0xFFB45309)
+                      : const Color(0xFF059669),
                   label: 'Pompa',
-                  value: 'Oto',
+                  value: widget.actuatorState.pumpAutoMode ? 'Oto' : 'Man',
+                  subtitle: widget.actuatorState.pumpAutoMode
+                      ? 'Sensor Active'
+                      : 'Manual ON',
+                  subtitleColor: widget.actuatorState.pumpAutoMode
+                      ? const Color(0xFFB45309)
+                      : const Color(0xFF059669),
+                  onTap: widget.onTogglePumpMode,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Monitoring Cuaca Lingkungan BMKG
+          // ESP32 Hardware Hub Config Banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.router_rounded, color: Colors.amberAccent, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hubungkan Modul ESP32',
+                        style: AppTextStyles.labelLg(color: Colors.white)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        'Input IP & Wi-Fi Node Hardware',
+                        style: AppTextStyles.labelMd(color: Colors.white70).copyWith(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => EspConfigDialog.show(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amberAccent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Input IP', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // BMKG Weather Monitoring Widget
           const BmkgWeatherCard(),
+          const SizedBox(height: 16),
+
+          // Primary Action Buttons (Kontrol Kamera & Database Penyakit)
+          Row(
+            children: [
+              Expanded(
+                child: _BigActionButton(
+                  icon: Icons.camera_alt_rounded,
+                  iconBgColor: const Color(0xFF10B981),
+                  title: 'Kontrol Kamera ESP32',
+                  subtitle: 'Live Stream & Pan-Tilt Servo',
+                  onTap: () => widget.onNavigateToTab(2), // Tab Kamera
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _BigActionButton(
+                  icon: Icons.document_scanner_rounded,
+                  iconBgColor: AppColors.secondaryContainer,
+                  title: 'Database Penyakit',
+                  subtitle: 'Katalog & Scan AI',
+                  onTap: () => widget.onNavigateToTab(1), // Tab Daun
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
 
           // Secondary Navigation Cards
@@ -183,7 +353,7 @@ class BerandaTabView extends StatelessWidget {
                   iconColor: AppColors.onPrimaryContainer,
                   title: 'Ensiklopedia',
                   subtitle: 'Info Penyakit',
-                  onTap: onNavigateToDaun,
+                  onTap: () => widget.onNavigateToTab(1),
                 ),
               ),
               const SizedBox(width: 12),
@@ -194,7 +364,7 @@ class BerandaTabView extends StatelessWidget {
                   iconColor: AppColors.onTertiaryContainer,
                   title: 'Data Sensor',
                   subtitle: 'Cek Detail',
-                  onTap: () {},
+                  onTap: () => widget.onNavigateToTab(3),
                 ),
               ),
               const SizedBox(width: 12),
@@ -203,14 +373,9 @@ class BerandaTabView extends StatelessWidget {
                   icon: Icons.router_rounded,
                   iconBgColor: AppColors.secondaryContainer,
                   iconColor: AppColors.onSecondaryContainer,
-                  title: 'Status Perangkat',
-                  subtitle: '',
-                  onTap: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const StatusPerangkatScreen()));
-                  },
+                  title: 'Status IoT',
+                  subtitle: 'Node Connect',
+                  onTap: () => EspConfigDialog.show(context),
                 ),
               ),
             ],
@@ -221,10 +386,14 @@ class BerandaTabView extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Aktivitas Terakhir',
-                  style: AppTextStyles.titleMd(color: AppColors.onSurface)),
+              Expanded(
+                child: Text('Aktivitas Terakhir',
+                    style: AppTextStyles.titleMd(color: AppColors.onSurface),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+              ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => widget.onNavigateToTab(4), // Tab Riwayat
                 child: Text('Lihat Semua',
                     style: AppTextStyles.labelLg(color: AppColors.primary)
                         .copyWith(fontWeight: FontWeight.w600)),
@@ -236,8 +405,7 @@ class BerandaTabView extends StatelessWidget {
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(16),
-              border:
-                  Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.20)),
+              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.20)),
               boxShadow: [
                 BoxShadow(
                     color: Colors.black.withValues(alpha: 0.03),
@@ -246,27 +414,96 @@ class BerandaTabView extends StatelessWidget {
               ],
             ),
             child: Column(
-              children: [
-                const RecentActivityItem(
-                  icon: Icons.water_drop,
-                  iconColor: AppColors.primary,
-                  iconBgColor: Color(0x1A003B58),
-                  title: 'Penyiraman Selesai',
-                  subtitle: 'Sektor A • 15 menit yang lalu',
-                  hasDivider: true,
-                ),
-                RecentActivityItem(
-                  icon: Icons.document_scanner_rounded,
-                  iconColor: AppColors.error,
-                  iconBgColor: AppColors.error.withValues(alpha: 0.10),
-                  title: 'Deteksi Bercak Daun',
-                  subtitle: 'Sektor B • 2 jam yang lalu',
-                  hasDivider: false,
-                ),
-              ],
+              children: widget.activities.take(3).map((act) {
+                return RecentActivityItem(
+                  icon: act.type == 'watering'
+                      ? Icons.water_drop
+                      : act.type == 'scan_alert'
+                          ? Icons.document_scanner_rounded
+                          : Icons.thermostat,
+                  iconColor: act.type == 'watering'
+                      ? AppColors.primary
+                      : act.type == 'scan_alert'
+                          ? AppColors.error
+                          : AppColors.secondary,
+                  iconBgColor: act.type == 'watering'
+                      ? const Color(0x1A003B58)
+                      : act.type == 'scan_alert'
+                          ? AppColors.error.withValues(alpha: 0.10)
+                          : AppColors.secondary.withValues(alpha: 0.10),
+                  title: act.title,
+                  subtitle: '${act.subtitle} • ${act.timestamp}',
+                  hasDivider: act != widget.activities.take(3).last,
+                );
+              }).toList(),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _BigActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color iconBgColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _BigActionButton({
+    required this.icon,
+    required this.iconBgColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.20)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: AppTextStyles.labelLg(color: AppColors.onSurface)
+                  .copyWith(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                  .copyWith(fontSize: 10),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -295,7 +532,7 @@ class _NavCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppColors.surfaceContainerLowest,
           borderRadius: BorderRadius.circular(16),
@@ -310,22 +547,22 @@ class _NavCard extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                   color: iconBgColor, borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, size: 24, color: iconColor),
+              child: Icon(icon, size: 22, color: iconColor),
             ),
             const SizedBox(height: 8),
             Text(title,
                 style: AppTextStyles.labelLg(color: AppColors.onSurface)
-                    .copyWith(fontWeight: FontWeight.w600),
+                    .copyWith(fontWeight: FontWeight.w600, fontSize: 12),
                 textAlign: TextAlign.center),
             if (subtitle.isNotEmpty) ...[
               const SizedBox(height: 2),
               Text(subtitle,
                   style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                      .copyWith(fontSize: 11),
+                      .copyWith(fontSize: 10),
                   textAlign: TextAlign.center),
             ],
           ],

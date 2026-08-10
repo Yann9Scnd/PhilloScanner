@@ -17,14 +17,30 @@ class SensorReadingController extends Controller
     }
 
     /**
+     * GET /api/sensor-readings/latest
+     */
+    public function latest()
+    {
+        $reading = SensorReading::orderByDesc('id')->first();
+        if (!$reading) {
+            return response()->json(['message' => 'Belum ada pembacaan sensor.'], 404);
+        }
+        return response()->json($reading);
+    }
+
+    /**
      * POST /api/sensor-readings
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'device_id' => 'required|string',
+            'device_id' => 'nullable|string',
             'soil_moisture' => 'nullable|string',
             'temperature' => 'nullable|string',
+            'air_humidity' => 'nullable|string',
+            'light_intensity' => 'nullable|string',
+            'water_tank_level' => 'nullable|string',
+            'soil_ph' => 'nullable|string',
             'pump_status' => 'nullable|string',
             'timestamp' => 'nullable|string',
         ]);

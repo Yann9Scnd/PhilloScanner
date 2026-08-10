@@ -44,6 +44,8 @@ class ScanResultController extends Controller
             'confidence' => 'required|integer|min:0|max:100',
             'timestamp' => 'nullable|string',
             'soil_moisture' => 'nullable|string',
+            'sector' => 'nullable|string',
+            'temperature_at_scan' => 'nullable|string',
             'ai_recommendations' => 'nullable|string',
         ]);
 

@@ -134,34 +134,40 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // BMKG Official Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          width: 1,
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1,
+                          ),
                         ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.cloud_sync_rounded,
-                            size: 16,
-                            color: Color(0xFF8AC9DA),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'API BMKG Terhubung',
-                            style: AppTextStyles.labelMd(color: Colors.white).copyWith(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 11,
-                              letterSpacing: 0.3,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_sync_rounded,
+                              size: 16,
+                              color: Color(0xFF8AC9DA),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'API BMKG Terhubung',
+                                style: AppTextStyles.labelMd(color: Colors.white).copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                  letterSpacing: 0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
@@ -289,39 +295,47 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
                       const SizedBox(width: 16),
 
                       // Temperature Display
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${weather.temp.round()}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 42,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  height: 1.0,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    '${weather.temp.round()}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white,
+                                      height: 1.0,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                              const Text(
-                                '°C',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF8AC9DA),
+                                const Text(
+                                  '°C',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF8AC9DA),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            weather.weatherDesc,
-                            style: AppTextStyles.titleMd(color: Colors.white).copyWith(
-                              fontWeight: FontWeight.w600,
+                              ],
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              weather.weatherDesc,
+                              style: AppTextStyles.titleMd(color: Colors.white).copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -336,22 +350,27 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
 
                   // Weather Metrics Grid (3 columns)
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _WeatherMetricItem(
-                        icon: Icons.water_drop_outlined,
-                        label: 'Kelembapan',
-                        value: '${weather.humidity}%',
+                      Expanded(
+                        child: _WeatherMetricItem(
+                          icon: Icons.water_drop_outlined,
+                          label: 'Kelembapan',
+                          value: '${weather.humidity}%',
+                        ),
                       ),
-                      _WeatherMetricItem(
-                        icon: Icons.air_rounded,
-                        label: 'Angin',
-                        value: '${weather.windSpeed.toStringAsFixed(1)} km/h',
+                      Expanded(
+                        child: _WeatherMetricItem(
+                          icon: Icons.air_rounded,
+                          label: 'Angin',
+                          value: '${weather.windSpeed.toStringAsFixed(1)} km/h',
+                        ),
                       ),
-                      _WeatherMetricItem(
-                        icon: Icons.explore_outlined,
-                        label: 'Arah Angin',
-                        value: weather.windDirection,
+                      Expanded(
+                        child: _WeatherMetricItem(
+                          icon: Icons.explore_outlined,
+                          label: 'Arah Angin',
+                          value: weather.windDirection,
+                        ),
                       ),
                     ],
                   ),
@@ -398,11 +417,15 @@ class _WeatherMetricItem extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: const Color(0xFF8AC9DA)),
             const SizedBox(width: 4),
-            Text(
-              label,
-              style: AppTextStyles.labelMd(
-                color: Colors.white.withValues(alpha: 0.75),
-              ).copyWith(fontSize: 11),
+            Flexible(
+              child: Text(
+                label,
+                style: AppTextStyles.labelMd(
+                  color: Colors.white.withValues(alpha: 0.75),
+                ).copyWith(fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

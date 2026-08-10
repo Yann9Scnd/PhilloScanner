@@ -1,9 +1,11 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import '../models/disease_model.dart';
 import '../models/scan_result_model.dart';
+import '../models/sensor_data_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -15,6 +17,11 @@ class DatabaseHelper {
     if (_database != null) return _database!;
     if (kIsWeb) {
       databaseFactory = databaseFactoryFfiWeb;
+    } else if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
     }
     _database = await _initDB('phylloscanner.db');
     return _database!;
@@ -26,15 +33,43 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
-        await db.execute('DROP TABLE IF EXISTS diseases');
-        await db.execute('DROP TABLE IF EXISTS scan_results');
-        await db.execute('DROP TABLE IF EXISTS sensor_readings');
-        await _createDB(db, newVersion);
+        if (oldVersion < 2) {
+          await db.execute('DROP TABLE IF EXISTS diseases');
+          await db.execute('DROP TABLE IF EXISTS scan_results');
+          await db.execute('DROP TABLE IF EXISTS sensor_readings');
+          await _createDB(db, newVersion);
+          return;
+        }
+        if (oldVersion < 3) {
+          // Non-destructive upgrade: tambah kolom yang hilang agar cocok dgn model
+          await _tryAlter(
+            db,
+            'scan_results',
+            'sector TEXT NOT NULL DEFAULT \'Greenhouse Sektor A\'',
+          );
+          await _tryAlter(
+            db,
+            'scan_results',
+            'temperature_at_scan TEXT NOT NULL DEFAULT \'28.0\'',
+          );
+          await _tryAlter(db, 'sensor_readings', 'air_humidity TEXT');
+          await _tryAlter(db, 'sensor_readings', 'light_intensity TEXT');
+          await _tryAlter(db, 'sensor_readings', 'water_tank_level TEXT');
+          await _tryAlter(db, 'sensor_readings', 'soil_ph TEXT');
+        }
       },
     );
+  }
+
+  Future<void> _tryAlter(Database db, String table, String columnDef) async {
+    try {
+      await db.execute('ALTER TABLE $table ADD COLUMN $columnDef');
+    } catch (_) {
+      // Kolom sudah ada (mis. DB rusak dari versi lama) -> abaikan
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -64,19 +99,25 @@ class DatabaseHelper {
         confidence INTEGER NOT NULL,
         timestamp TEXT NOT NULL,
         soil_moisture TEXT NOT NULL,
+        sector TEXT NOT NULL DEFAULT 'Greenhouse Sektor A',
+        temperature_at_scan TEXT NOT NULL DEFAULT '28.0',
         ai_recommendations TEXT NOT NULL
       )
     ''');
 
-    // 3. Sensor Readings table
+    // 3. Sensor Readings table (telemetri ESP32 Node 2)
     await db.execute('''
       CREATE TABLE sensor_readings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        device_id TEXT NOT NULL,
-        soil_moisture TEXT NOT NULL,
-        temperature TEXT NOT NULL,
-        pump_status TEXT NOT NULL,
-        timestamp TEXT NOT NULL
+        device_id TEXT NOT NULL DEFAULT 'Node 2: ESP32 Sensor',
+        soil_moisture TEXT NOT NULL DEFAULT '0',
+        temperature TEXT NOT NULL DEFAULT '0',
+        air_humidity TEXT NOT NULL DEFAULT '0',
+        light_intensity TEXT NOT NULL DEFAULT '0',
+        water_tank_level TEXT NOT NULL DEFAULT '0',
+        soil_ph TEXT NOT NULL DEFAULT '0',
+        pump_status TEXT NOT NULL DEFAULT 'Standby',
+        timestamp TEXT NOT NULL DEFAULT ''
       )
     ''');
 
@@ -317,5 +358,17 @@ class DatabaseHelper {
       result = await db.query('diseases', orderBy: 'id ASC');
     }
     return result.map((json) => DiseaseModel.fromMap(json)).toList();
+  }
+
+  Future<int> insertSensorReading(SensorDataModel reading) async {
+    final db = await instance.database;
+    return await db.insert('sensor_readings', reading.toMap());
+  }
+
+  Future<SensorDataModel?> getLatestSensorReading() async {
+    final db = await instance.database;
+    final result = await db.query('sensor_readings', orderBy: 'id DESC', limit: 1);
+    if (result.isEmpty) return null;
+    return SensorDataModel.fromMap(result.first);
   }
 }

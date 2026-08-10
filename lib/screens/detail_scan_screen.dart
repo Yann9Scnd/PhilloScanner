@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../models/chat_message_model.dart';
 import '../models/scan_result_model.dart';
 import '../theme/app_theme.dart';
 
 /// Halaman Detail Hasil Scan Daun
-class DetailScanScreen extends StatelessWidget {
+class DetailScanScreen extends StatefulWidget {
   final ScanResultModel? scan;
 
   const DetailScanScreen({super.key, this.scan});
 
+  @override
+  State<DetailScanScreen> createState() => _DetailScanScreenState();
+}
+
+class _DetailScanScreenState extends State<DetailScanScreen> {
   static const _defaultScan = ScanResultModel(
     deviceId: 'ESP32-CAM Sektor B-04',
     imageUrl:
@@ -25,10 +32,119 @@ class DetailScanScreen extends StatelessWidget {
     ],
   );
 
+  final List<ChatMessageModel> _messages = [];
+  final TextEditingController _chatController = TextEditingController();
+  final ScrollController _chatScrollController = ScrollController();
+  bool _isChatLoading = false;
+
+  ScanResultModel get _activeScan => widget.scan ?? _defaultScan;
+
+  @override
+  void initState() {
+    super.initState();
+    _messages.add(ChatMessageModel(
+      id: 'ai-intro',
+      sender: 'ai',
+      text:
+          'Berdasarkan hasil scan, ${_activeScan.diseaseName.toLowerCase()} ini kemungkinan disebabkan oleh jamur Cercospora. Apakah Anda ingin tahu cara pencegahan alami untuk tanaman di sekitarnya?',
+      timestamp: _activeScan.timestamp,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    _chatScrollController.dispose();
+    super.dispose();
+  }
+
+  void _showToast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Color(0xFF34D399), size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _scrollChatToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_chatScrollController.hasClients) {
+        _chatScrollController.animateTo(
+          _chatScrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _handleSendChat() async {
+    final text = _chatController.text.trim();
+    if (text.isEmpty || _isChatLoading) return;
+
+    setState(() {
+      _messages.add(ChatMessageModel(
+        id: 'usr-${DateTime.now().millisecondsSinceEpoch}',
+        sender: 'user',
+        text: text,
+        timestamp: 'Sekarang',
+      ));
+      _chatController.clear();
+      _isChatLoading = true;
+    });
+    _scrollChatToBottom();
+
+    await Future.delayed(const Duration(milliseconds: 1000));
+
+    if (!mounted) return;
+    final q = text.toLowerCase();
+    String replyText =
+        'Lakukan pemangkasan daun terinfeksi dan jaga kelembapan tanah di angka 50-65%.';
+    if (q.contains('jamur') || q.contains('fungisida') || q.contains('bercak')) {
+      replyText =
+          'Pencegahan alami: Semprotkan ekstrak daun mimba atau kuprum tembaga organik pada pagi hari. Kurangi kelembapan udara mikro di sekitar ${_activeScan.diseaseName.toLowerCase()}.';
+    } else if (q.contains('pupuk') || q.contains('nutrisi') || q.contains('subur')) {
+      replyText =
+          'Berikan pupuk organik kaya kalium (K) untuk memperkuat dinding sel daun. Jaga kadar PPM nutrisi 1000-1200 dengan pH tanah 6.0-6.5.';
+    } else if (q.contains('irigasi') || q.contains('air') || q.contains('siram')) {
+      replyText =
+          'Untuk ${_activeScan.severity.toLowerCase()} severity ini, siram saat kelembapan tanah turun di bawah 50%. Gunakan irigasi tetes otomatis dari Node 2 ESP32.';
+    }
+
+    setState(() {
+      _messages.add(ChatMessageModel(
+        id: 'ai-${DateTime.now().millisecondsSinceEpoch}',
+        sender: 'ai',
+        text: replyText,
+        timestamp: 'Sekarang',
+      ));
+      _isChatLoading = false;
+    });
+    _scrollChatToBottom();
+  }
+
+  Future<void> _handleShare() async {
+    final text =
+        'Hasil Scan LeafGuard: ${_activeScan.diseaseName} (Kepercayaan ${_activeScan.confidence}%, ${_activeScan.severity})';
+    await Clipboard.setData(ClipboardData(text: text));
+    _showToast('Informasi berhasil disalin ke clipboard!');
+  }
+
+  void _handleSave() {
+    _showToast('Tersimpan di database lokal!');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final activeScan = scan ?? _defaultScan;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -88,7 +204,7 @@ class DetailScanScreen extends StatelessWidget {
                               // Scan Image
                               Positioned.fill(
                                 child: Image.network(
-                                  activeScan.imageUrl,
+                                  _activeScan.imageUrl,
                                   fit: BoxFit.cover,
                                   errorBuilder: (ctx, e, st) => Container(
                                     color: AppColors.surfaceContainer,
@@ -124,7 +240,7 @@ class DetailScanScreen extends StatelessWidget {
                                               AppColors.onSecondaryContainer),
                                       const SizedBox(width: 4),
                                       Text(
-                                        activeScan.severity.toUpperCase(),
+                                        _activeScan.severity.toUpperCase(),
                                         style: AppTextStyles.labelLg(
                                                 color: AppColors
                                                     .onSecondaryContainer)
@@ -182,12 +298,12 @@ class DetailScanScreen extends StatelessWidget {
                                                 color: AppColors.secondary)
                                             .copyWith(letterSpacing: 1.5)),
                                     const SizedBox(height: 4),
-                                    Text(activeScan.diseaseName,
+                                    Text(_activeScan.diseaseName,
                                         style: AppTextStyles.headlineLgMobile(
                                             color: AppColors.primary)),
-                                    if (activeScan.scientificName.isNotEmpty) ...[
+                                    if (_activeScan.scientificName.isNotEmpty) ...[
                                       const SizedBox(height: 2),
-                                      Text(activeScan.scientificName,
+                                      Text(_activeScan.scientificName,
                                           style: AppTextStyles.labelMd(
                                               color: AppColors.onSurfaceVariant)),
                                     ],
@@ -203,7 +319,7 @@ class DetailScanScreen extends StatelessWidget {
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text('${activeScan.confidence}',
+                                      Text('${_activeScan.confidence}',
                                           style: AppTextStyles.dataDisplay(
                                               color: AppColors.primary)),
                                       Padding(
@@ -225,7 +341,7 @@ class DetailScanScreen extends StatelessWidget {
                               const Icon(Icons.calendar_today_rounded,
                                   size: 16, color: AppColors.outline),
                               const SizedBox(width: 6),
-                              Text(activeScan.timestamp,
+                              Text(_activeScan.timestamp,
                                   style: AppTextStyles.bodyMd(
                                       color: AppColors.outline)),
                             ],
@@ -264,13 +380,146 @@ class DetailScanScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
                           ...List.generate(
-                            activeScan.aiRecommendations.length,
+                            _activeScan.aiRecommendations.length,
                             (index) => Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: _StepItem(
                                 step: index + 1,
-                                text: activeScan.aiRecommendations[index],
+                                text: _activeScan.aiRecommendations[index],
+                                isLast:
+                                    index == _activeScan.aiRecommendations.length - 1,
                               ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Tanya AI LeafGuard Chat Section
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.10)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.secondaryContainer,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.smart_toy_outlined,
+                                    size: 18, color: AppColors.onSecondaryContainer),
+                              ),
+                              const SizedBox(width: 10),
+                              Text('Tanya AI LeafGuard',
+                                  style: AppTextStyles.titleMd(
+                                      color: AppColors.primary)),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Chat Messages
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 220),
+                            child: ListView.separated(
+                              controller: _chatScrollController,
+                              shrinkWrap: true,
+                              physics: const BouncingScrollPhysics(),
+                              itemCount: _messages.length + (_isChatLoading ? 1 : 0),
+                              separatorBuilder: (_, _) => const SizedBox(height: 8),
+                              itemBuilder: (context, index) {
+                                if (index == _messages.length) {
+                                  return const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: _TypingBubble(),
+                                  );
+                                }
+                                final msg = _messages[index];
+                                final isUser = msg.sender == 'user';
+                                return Align(
+                                  alignment: isUser
+                                      ? Alignment.centerRight
+                                      : Alignment.centerLeft,
+                                  child: Container(
+                                    constraints: const BoxConstraints(maxWidth: 280),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    decoration: BoxDecoration(
+                                      color: isUser
+                                          ? AppColors.primary
+                                          : const Color(0xFFF3F3F3),
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(isUser ? 14 : 4),
+                                        topRight: Radius.circular(isUser ? 4 : 14),
+                                        bottomLeft: const Radius.circular(14),
+                                        bottomRight: const Radius.circular(14),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      msg.text,
+                                      style: AppTextStyles.labelMd(
+                                        color: isUser
+                                            ? AppColors.onPrimary
+                                            : AppColors.onSurfaceVariant,
+                                      ).copyWith(fontSize: 12, height: 1.4),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Chat Input
+                          Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3F3F3),
+                              borderRadius: BorderRadius.circular(9999),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: _chatController,
+                                    onSubmitted: (_) => _handleSendChat(),
+                                    textInputAction: TextInputAction.send,
+                                    style: const TextStyle(fontSize: 13),
+                                    decoration: InputDecoration(
+                                      hintText: 'Tanyakan sesuatu...',
+                                      hintStyle: AppTextStyles.labelMd(
+                                          color: AppColors.outline),
+                                      border: InputBorder.none,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 12),
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: GestureDetector(
+                                    onTap: _handleSendChat,
+                                    child: Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(Icons.send_rounded,
+                                          size: 16, color: AppColors.onPrimary),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -285,7 +534,7 @@ class DetailScanScreen extends StatelessWidget {
                           child: _TechInfoCard(
                             icon: Icons.videocam_rounded,
                             label: 'Sumber Perangkat',
-                            value: activeScan.deviceId,
+                            value: _activeScan.deviceId,
                             subtitle: 'ESP32-CAM',
                           ),
                         ),
@@ -294,7 +543,7 @@ class DetailScanScreen extends StatelessWidget {
                           child: _TechInfoCard(
                             icon: Icons.water_drop_outlined,
                             label: 'Kelembapan',
-                            value: activeScan.soilMoisture,
+                            value: _activeScan.soilMoisture,
                             subtitle: 'Waktu Scan',
                           ),
                         ),
@@ -307,7 +556,7 @@ class DetailScanScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () {},
+                            onPressed: _handleShare,
                             icon: const Icon(Icons.share_rounded),
                             label: const Text('Bagikan'),
                             style: ElevatedButton.styleFrom(
@@ -323,7 +572,7 @@ class DetailScanScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton.icon(
-                            onPressed: () {},
+                            onPressed: _handleSave,
                             icon: const Icon(Icons.download_rounded),
                             label: const Text('Simpan'),
                             style: ElevatedButton.styleFrom(
@@ -349,34 +598,76 @@ class DetailScanScreen extends StatelessWidget {
   }
 }
 
+class _TypingBubble extends StatelessWidget {
+  const _TypingBubble();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F3F3),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(4),
+          topRight: Radius.circular(14),
+          bottomLeft: Radius.circular(14),
+          bottomRight: Radius.circular(14),
+        ),
+      ),
+      child: Text(
+        'AI LeafGuard sedang mengetik...',
+        style: AppTextStyles.labelMd(color: AppColors.outline).copyWith(fontSize: 11),
+      ),
+    );
+  }
+}
+
 class _StepItem extends StatelessWidget {
   final int step;
   final String text;
-  const _StepItem({required this.step, required this.text});
+  final bool isLast;
+  const _StepItem({
+    required this.step,
+    required this.text,
+    this.isLast = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 24,
-          height: 24,
-          decoration: const BoxDecoration(
-              color: AppColors.secondaryContainer, shape: BoxShape.circle),
-          child: Center(
-            child: Text(
-              '$step',
-              style:
-                  AppTextStyles.labelMd(color: AppColors.onSecondaryContainer),
+        Column(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: const BoxDecoration(
+                  color: AppColors.secondaryContainer, shape: BoxShape.circle),
+              child: Center(
+                child: Text(
+                  '$step',
+                  style:
+                      AppTextStyles.labelMd(color: AppColors.onSecondaryContainer),
+                ),
+              ),
             ),
-          ),
+            if (!isLast)
+              Container(
+                width: 1.5,
+                height: 18,
+                color: const Color(0xFFC0C7CF),
+              ),
+          ],
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(text,
-              style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant)
-                  .copyWith(fontSize: 15, height: 1.4)),
+          child: Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 6),
+            child: Text(text,
+                style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant)
+                    .copyWith(fontSize: 15, height: 1.4)),
+          ),
         ),
       ],
     );
