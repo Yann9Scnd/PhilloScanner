@@ -723,6 +723,11 @@
           document.getElementById("valDist").innerText =
             (data.dist || "--") + " cm";
 
+          if (data.batt && data.batt !== "--") {
+            document.getElementById("valBatt").innerText =
+              data.batt + "%";
+          }
+
           const numAccuracy = parseFloat(akurasi.replace("%", "")) || 0;
           document.getElementById("accuracyBar").style.width =
             numAccuracy + "%";

@@ -1,5 +1,6 @@
 import io
 import os
+from datetime import datetime
 from fastapi import FastAPI, File, Form, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -62,7 +63,18 @@ servo_state = {"base": 90, "shoulder": 90, "elbow": 90, "gripper": 90}
 latest_frame_bytes = None
 latest_prediksi = "Menunggu Kamera..."
 latest_akurasi = "0.00%"
-telemetry_data = {"temp": "--", "hum": "--", "dist": "--"}
+# Telemetri dari ESP32 DevKit (sensor node). Key pendek dipakai index.html,
+# key snake_case dipakai aplikasi Flutter (SensorDataModel.fromMap).
+telemetry_data = {
+    "temp": "--",       # Suhu udara °C
+    "hum": "--",        # Kelembapan udara %
+    "dist": "--",       # Jarak objek daun cm (ultrasonik)
+    "soil": "--",       # Kelembapan tanah %
+    "batt": "--",       # Kapasitas baterai %
+    "device_id": "Node 2: ESP32 Sensor",
+    "pump_status": "Standby",
+    "timestamp": "Baru saja",
+}
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -153,6 +165,8 @@ def get_flash():
       "temp": telemetry_data["temp"],
       "hum": telemetry_data["hum"],
       "dist": telemetry_data["dist"],
+      "soil": telemetry_data["soil"],
+      "batt": telemetry_data["batt"],
   })
 
 
@@ -188,13 +202,37 @@ def toggle_flash():
 
 @app.post("/update-telemetry")
 async def update_telemetry(
-    temp: str = Form(...), hum: str = Form(...), dist: str = Form(...)
+    temp: str = Form(...),
+    hum: str = Form(...),
+    dist: str = Form(...),
+    soil: str = Form("--"),
+    batt: str = Form("--"),
 ):
   global telemetry_data
   telemetry_data["temp"] = temp
   telemetry_data["hum"] = hum
   telemetry_data["dist"] = dist
+  telemetry_data["soil"] = soil
+  telemetry_data["batt"] = batt
+  telemetry_data["timestamp"] = datetime.now().strftime("%d %b %Y • %H:%M WIB")
   return {"status": "success"}
+
+
+@app.get("/telemetry")
+def get_telemetry():
+  """Payload telemetri dengan key yang sama persis dengan
+  SensorDataModel Flutter (snake_case), siap dikonsumsi aplikasi."""
+  global telemetry_data
+  return JSONResponse({
+      "device_id": telemetry_data["device_id"],
+      "temperature": telemetry_data["temp"],
+      "air_humidity": telemetry_data["hum"],
+      "soil_moisture": telemetry_data["soil"],
+      "battery_level": telemetry_data["batt"],
+      "leaf_distance": telemetry_data["dist"],
+      "pump_status": telemetry_data["pump_status"],
+      "timestamp": telemetry_data["timestamp"],
+  })
 
 
 @app.get("/set-servo")
