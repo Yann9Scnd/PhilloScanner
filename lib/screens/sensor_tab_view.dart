@@ -34,6 +34,8 @@ class _SensorTabViewState extends State<SensorTabView> {
       soilMoisture: (widget.sensorData.soilMoisture + (5 - (DateTime.now().second % 10))).clamp(20, 100),
       temperature: (widget.sensorData.temperature + (1 - (DateTime.now().second % 3))).clamp(18, 40),
       airHumidity: (widget.sensorData.airHumidity + (2 - (DateTime.now().second % 5))).clamp(30, 100),
+      batteryLevel: (widget.sensorData.batteryLevel + (2 - (DateTime.now().second % 4))).clamp(0, 100),
+      leafDistance: (widget.sensorData.leafDistance + (3 - (DateTime.now().second % 5))).clamp(5, 80),
       timestamp: 'Baru saja',
     );
     widget.onUpdateSensors(newData);
@@ -45,16 +47,10 @@ class _SensorTabViewState extends State<SensorTabView> {
     EspService.instance.toggleActuator('pump', nextState);
   }
 
-  void _toggleMisting() {
-    final nextState = !widget.actuatorState.mistingActive;
-    widget.onUpdateActuators(widget.actuatorState.copyWith(mistingActive: nextState));
-    EspService.instance.toggleActuator('misting', nextState);
-  }
-
-  void _toggleFan() {
-    final nextState = !widget.actuatorState.fanActive;
-    widget.onUpdateActuators(widget.actuatorState.copyWith(fanActive: nextState));
-    EspService.instance.toggleActuator('fan', nextState);
+  void _togglePesticide() {
+    final nextState = !widget.actuatorState.pesticideActive;
+    widget.onUpdateActuators(widget.actuatorState.copyWith(pesticideActive: nextState));
+    EspService.instance.toggleActuator('pesticide', nextState);
   }
 
   @override
@@ -159,29 +155,14 @@ class _SensorTabViewState extends State<SensorTabView> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Misting
+                    // Pompa Pestisida
                     Expanded(
                       child: _ActuatorTile(
-                        title: 'Misting / Sprinkler',
-                        status: widget.actuatorState.mistingActive ? 'ON (Pengabut)' : 'Mati',
-                        isActive: widget.actuatorState.mistingActive,
-                        activeColor: const Color(0xFF00796B),
-                        onToggle: _toggleMisting,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    // Kipas Ventilasi
-                    Expanded(
-                      child: _ActuatorTile(
-                        title: 'Kipas Ventilasi',
-                        status: widget.actuatorState.fanActive ? 'ON (Sirkulasi)' : 'Mati',
-                        isActive: widget.actuatorState.fanActive,
-                        activeColor: const Color(0xFF388E3C),
-                        onToggle: _toggleFan,
+                        title: 'Pompa Pestisida',
+                        status: widget.actuatorState.pesticideActive ? 'ON (Menyemprot)' : 'Standby',
+                        isActive: widget.actuatorState.pesticideActive,
+                        activeColor: const Color(0xFF7C3AED),
+                        onToggle: _togglePesticide,
                       ),
                     ),
                   ],
@@ -191,7 +172,7 @@ class _SensorTabViewState extends State<SensorTabView> {
           ),
           const SizedBox(height: 16),
 
-          // 3 Active Sensors Grid
+          // Sensor Metrics Grid (2 baris)
           Row(
             children: [
               // Kelembapan Tanah
@@ -229,7 +210,37 @@ class _SensorTabViewState extends State<SensorTabView> {
                   value: '${widget.sensorData.airHumidity.round()}%',
                   progress: widget.sensorData.airHumidity / 100,
                   progressColor: const Color(0xFF00796B),
-                  status: 'Terjaga Kipas',
+                  status: 'Kondisi Normal',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              // Kapasitas Baterai
+              Expanded(
+                child: _SensorMetricTile(
+                  icon: Icons.battery_charging_full_rounded,
+                  iconColor: const Color(0xFF388E3C),
+                  label: 'Baterai ESP32',
+                  value: '${widget.sensorData.batteryLevel.round()}%',
+                  progress: widget.sensorData.batteryLevel / 100,
+                  progressColor: const Color(0xFF388E3C),
+                  status: 'Baterai Tersisa',
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Jarak Daun ke ESP-CAM
+              Expanded(
+                child: _SensorMetricTile(
+                  icon: Icons.straighten_rounded,
+                  iconColor: const Color(0xFF7C3AED),
+                  label: 'Jarak Daun ke Kamera',
+                  value: '${widget.sensorData.leafDistance.round()} cm',
+                  progress: widget.sensorData.leafDistance / 100,
+                  progressColor: const Color(0xFF7C3AED),
+                  status: 'Sensor Ultrasonik',
                 ),
               ),
             ],
@@ -355,7 +366,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              'IP: ${EspService.instance.camIp} • Live Stream & Servo Pan-Tilt',
+                              'IP: ${EspService.instance.camIp} • Live Stream, Servo & Ultrasonik Jarak Daun',
                               style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontSize: 11),
                             ),
@@ -400,7 +411,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              'IP: ${EspService.instance.sensorIp} • Capacitive Soil, DHT22 & Relai',
+                              'IP: ${EspService.instance.sensorIp} • Soil, DHT22, Baterai & Relai',
                               style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontSize: 11),
                             ),

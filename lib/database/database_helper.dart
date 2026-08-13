@@ -33,7 +33,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -59,6 +59,19 @@ class DatabaseHelper {
           await _tryAlter(db, 'sensor_readings', 'light_intensity TEXT');
           await _tryAlter(db, 'sensor_readings', 'water_tank_level TEXT');
           await _tryAlter(db, 'sensor_readings', 'soil_ph TEXT');
+        }
+        if (oldVersion < 4) {
+          // Telemetri tambahan: kapasitas baterai & jarak daun (ultrasonik)
+          await _tryAlter(
+            db,
+            'sensor_readings',
+            'battery_level TEXT NOT NULL DEFAULT \'86\'',
+          );
+          await _tryAlter(
+            db,
+            'sensor_readings',
+            'leaf_distance TEXT NOT NULL DEFAULT \'25\'',
+          );
         }
       },
     );
@@ -116,6 +129,8 @@ class DatabaseHelper {
         light_intensity TEXT NOT NULL DEFAULT '0',
         water_tank_level TEXT NOT NULL DEFAULT '0',
         soil_ph TEXT NOT NULL DEFAULT '0',
+        battery_level TEXT NOT NULL DEFAULT '86',
+        leaf_distance TEXT NOT NULL DEFAULT '25',
         pump_status TEXT NOT NULL DEFAULT 'Standby',
         timestamp TEXT NOT NULL DEFAULT ''
       )

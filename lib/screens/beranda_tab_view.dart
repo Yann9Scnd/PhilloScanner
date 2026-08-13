@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/activity_log_model.dart';
-import '../models/actuator_state_model.dart';
 import '../models/sensor_data_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_guide_dialog.dart';
 import '../widgets/bmkg_weather_card.dart';
 import '../widgets/esp_config_dialog.dart';
 import '../widgets/quick_stat_card.dart';
@@ -10,18 +10,14 @@ import '../widgets/recent_activity_item.dart';
 
 class BerandaTabView extends StatefulWidget {
   final SensorDataModel sensorData;
-  final ActuatorStateModel actuatorState;
   final List<ActivityLogModel> activities;
   final Function(int tabIndex) onNavigateToTab;
-  final VoidCallback? onTogglePumpMode;
 
   const BerandaTabView({
     super.key,
     required this.sensorData,
-    required this.actuatorState,
     required this.activities,
     required this.onNavigateToTab,
-    this.onTogglePumpMode,
   });
 
   @override
@@ -213,7 +209,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
           ),
           const SizedBox(height: 16),
 
-          // Quick Stats Grid (3 columns)
+          // Quick Stats Grid (2 kolom: Tanah & Suhu)
           Row(
             children: [
               Expanded(
@@ -221,7 +217,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                   icon: Icons.water_drop_outlined,
                   iconBgColor: const Color(0x1A003B58),
                   iconColor: AppColors.primary,
-                  label: 'Tanah',
+                  label: 'Kelembapan Tanah',
                   value: '${widget.sensorData.soilMoisture.round()}%',
                   subtitle: 'Optimal',
                   subtitleColor: const Color(0xFF16A34A),
@@ -233,37 +229,16 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                   icon: Icons.thermostat,
                   iconBgColor: const Color(0x1A835500),
                   iconColor: AppColors.secondary,
-                  label: 'Suhu',
+                  label: 'Suhu Udara',
                   value: '${widget.sensorData.temperature.round()}°C',
                   subtitle: 'Ideal 24-30°',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: QuickStatCard(
-                  icon: Icons.settings_input_component,
-                  iconBgColor: widget.actuatorState.pumpAutoMode
-                      ? const Color(0x33F59E0B)
-                      : const Color(0x3304A96B),
-                  iconColor: widget.actuatorState.pumpAutoMode
-                      ? const Color(0xFFB45309)
-                      : const Color(0xFF059669),
-                  label: 'Pompa',
-                  value: widget.actuatorState.pumpAutoMode ? 'Oto' : 'Man',
-                  subtitle: widget.actuatorState.pumpAutoMode
-                      ? 'Sensor Active'
-                      : 'Manual ON',
-                  subtitleColor: widget.actuatorState.pumpAutoMode
-                      ? const Color(0xFFB45309)
-                      : const Color(0xFF059669),
-                  onTap: widget.onTogglePumpMode,
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // ESP32 Hardware Hub Config Banner
+          // Hubungkan ESP32 Banner
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -292,7 +267,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                             .copyWith(fontWeight: FontWeight.w700),
                       ),
                       Text(
-                        'Input IP & Wi-Fi Node Hardware',
+                        'Input alamat IP perangkat IoT kebun',
                         style: AppTextStyles.labelMd(color: Colors.white70).copyWith(fontSize: 11),
                       ),
                     ],
@@ -311,75 +286,61 @@ class _BerandaTabViewState extends State<BerandaTabView> {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Panduan Penggunaan Banner
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.secondaryContainer,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.tertiaryContainer,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.menu_book_rounded, color: AppColors.tertiaryFixed, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Panduan Aplikasi',
+                        style: AppTextStyles.labelLg(color: AppColors.onSurface)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      Text(
+                        'Cara koneksi ESP & memakai fitur',
+                        style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                            .copyWith(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => AppGuideDialog.show(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.tertiaryFixed,
+                    foregroundColor: AppColors.background,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Baca', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
+            ),
+          ),
           const SizedBox(height: 16),
 
           // BMKG Weather Monitoring Widget
           const BmkgWeatherCard(),
-          const SizedBox(height: 16),
-
-          // Primary Action Buttons (Kontrol Kamera & Database Penyakit)
-          Row(
-            children: [
-              Expanded(
-                child: _BigActionButton(
-                  icon: Icons.camera_alt_rounded,
-                  iconBgColor: const Color(0xFF10B981),
-                  title: 'Kontrol Kamera ESP32',
-                  subtitle: 'Live Stream & Pan-Tilt Servo',
-                  onTap: () => widget.onNavigateToTab(2), // Tab Kamera
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _BigActionButton(
-                  icon: Icons.document_scanner_rounded,
-                  iconBgColor: AppColors.secondaryContainer,
-                  title: 'Database Penyakit',
-                  subtitle: 'Katalog & Scan AI',
-                  onTap: () => widget.onNavigateToTab(1), // Tab Daun
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Secondary Navigation Cards
-          Row(
-            children: [
-              Expanded(
-                child: _NavCard(
-                  icon: Icons.menu_book_rounded,
-                  iconBgColor: AppColors.primaryContainer,
-                  iconColor: AppColors.onPrimaryContainer,
-                  title: 'Ensiklopedia',
-                  subtitle: 'Info Penyakit',
-                  onTap: () => widget.onNavigateToTab(1),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _NavCard(
-                  icon: Icons.analytics_outlined,
-                  iconBgColor: AppColors.tertiaryContainer,
-                  iconColor: AppColors.onTertiaryContainer,
-                  title: 'Data Sensor',
-                  subtitle: 'Cek Detail',
-                  onTap: () => widget.onNavigateToTab(3),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _NavCard(
-                  icon: Icons.router_rounded,
-                  iconBgColor: AppColors.secondaryContainer,
-                  iconColor: AppColors.onSecondaryContainer,
-                  title: 'Status IoT',
-                  subtitle: 'Node Connect',
-                  onTap: () => EspConfigDialog.show(context),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 24),
 
           // Recent Activity List
@@ -439,134 +400,6 @@ class _BerandaTabViewState extends State<BerandaTabView> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _BigActionButton extends StatelessWidget {
-  final IconData icon;
-  final Color iconBgColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _BigActionButton({
-    required this.icon,
-    required this.iconBgColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: iconBgColor,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: AppTextStyles.labelLg(color: AppColors.onSurface)
-                  .copyWith(fontWeight: FontWeight.bold, fontSize: 13),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                  .copyWith(fontSize: 10),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconBgColor;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _NavCard({
-    required this.icon,
-    required this.iconBgColor,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.20)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 4,
-                offset: const Offset(0, 1))
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                  color: iconBgColor, borderRadius: BorderRadius.circular(12)),
-              child: Icon(icon, size: 22, color: iconColor),
-            ),
-            const SizedBox(height: 8),
-            Text(title,
-                style: AppTextStyles.labelLg(color: AppColors.onSurface)
-                    .copyWith(fontWeight: FontWeight.w600, fontSize: 12),
-                textAlign: TextAlign.center),
-            if (subtitle.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(subtitle,
-                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                      .copyWith(fontSize: 10),
-                  textAlign: TextAlign.center),
-            ],
-          ],
-        ),
       ),
     );
   }

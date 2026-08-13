@@ -7,6 +7,8 @@ class SensorDataModel {
   final double lightIntensity; // Lux
   final double waterTankLevel; // %
   final double soilPh; // pH value
+  final double batteryLevel; // % kapasitas baterai
+  final double leafDistance; // cm jarak daun ke ESP-CAM (ultrasonik)
   final String pumpStatus;
   final String timestamp;
 
@@ -19,6 +21,8 @@ class SensorDataModel {
     required this.lightIntensity,
     required this.waterTankLevel,
     required this.soilPh,
+    required this.batteryLevel,
+    required this.leafDistance,
     required this.pumpStatus,
     required this.timestamp,
   });
@@ -33,6 +37,8 @@ class SensorDataModel {
       'light_intensity': lightIntensity.toString(),
       'water_tank_level': waterTankLevel.toString(),
       'soil_ph': soilPh.toString(),
+      'battery_level': batteryLevel.toString(),
+      'leaf_distance': leafDistance.toString(),
       'pump_status': pumpStatus,
       'timestamp': timestamp,
     };
@@ -58,6 +64,8 @@ class SensorDataModel {
       lightIntensity: parseNum(map['light_intensity'], 18500.0),
       waterTankLevel: parseNum(map['water_tank_level'], 88.0),
       soilPh: parseNum(map['soil_ph'], 6.5),
+      batteryLevel: parseNum(map['battery_level'], 86.0),
+      leafDistance: parseNum(map['leaf_distance'], 25.0),
       pumpStatus: map['pump_status'] as String? ?? 'Standby',
       timestamp: map['timestamp'] as String? ?? 'Baru saja',
     );
@@ -72,6 +80,8 @@ class SensorDataModel {
       lightIntensity: 18500.0,
       waterTankLevel: 88.0,
       soilPh: 6.5,
+      batteryLevel: 86.0,
+      leafDistance: 25.0,
       pumpStatus: 'Standby',
       timestamp: 'Baru saja',
     );
@@ -86,6 +96,8 @@ class SensorDataModel {
     double? lightIntensity,
     double? waterTankLevel,
     double? soilPh,
+    double? batteryLevel,
+    double? leafDistance,
     String? pumpStatus,
     String? timestamp,
   }) {
@@ -98,6 +110,8 @@ class SensorDataModel {
       lightIntensity: lightIntensity ?? this.lightIntensity,
       waterTankLevel: waterTankLevel ?? this.waterTankLevel,
       soilPh: soilPh ?? this.soilPh,
+      batteryLevel: batteryLevel ?? this.batteryLevel,
+      leafDistance: leafDistance ?? this.leafDistance,
       pumpStatus: pumpStatus ?? this.pumpStatus,
       timestamp: timestamp ?? this.timestamp,
     );

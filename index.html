@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Dashboard Enterprise - Dual ESP32 AI Leaf Diagnostics & Robot Arm
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <style>
+      :root {
+        --bg-dark: #090d16;
+        --panel-bg: #111827;
+        --card-bg: #1f2937;
+        --accent-blue: #38bdf8;
+        --accent-green: #10b981;
+        --accent-yellow: #f59e0b;
+        --accent-red: #ef4444;
+        --border-color: #374151;
+        --text-main: #f9fafb;
+        --text-sub: #9ca3af;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      body {
+        background-color: var(--bg-dark);
+        color: var(--text-main);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .navbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 16px 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .brand-icon {
+        width: 44px;
+        height: 44px;
+        background: linear-gradient(135deg, #059669, #10b981);
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.4rem;
+        color: #fff;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+      }
+      .brand-title h1 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-main);
+        letter-spacing: -0.02em;
+      }
+      .brand-title p {
+        font-size: 0.8rem;
+        color: var(--text-sub);
+      }
+      .nav-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .btn-reset-nav {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--accent-red);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        padding: 8px 14px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+      }
+      .btn-reset-nav:hover {
+        background: rgba(239, 68, 68, 0.3);
+        transform: translateY(-1px);
+      }
+      .badge-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 30px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--accent-green);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      .badge-status.offline {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--accent-red);
+        border-color: rgba(239, 68, 68, 0.3);
+      }
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--accent-green);
+        box-shadow: 0 0 8px var(--accent-green);
+        animation: pulse 1.5s infinite;
+      }
+      .badge-status.offline .pulse-dot {
+        background-color: var(--accent-red);
+        box-shadow: 0 0 8px var(--accent-red);
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(0.95);
+          opacity: 0.7;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(0.95);
+          opacity: 0.7;
+        }
+      }
+
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr;
+        gap: 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      @media (max-width: 1024px) {
+        .dashboard-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel-card {
+        background: var(--panel-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      }
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .panel-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .panel-title i {
+        color: var(--accent-blue);
+      }
+
+      .video-container {
+        position: relative;
+        width: 100%;
+        height: 380px;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid var(--border-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .video-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      .camera-overlay {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(6px);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-main);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .camera-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .btn-action {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        font-weight: 700;
+        font-size: 0.82rem;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        background: var(--card-bg);
+        color: var(--text-main);
+      }
+      .btn-flash-on {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: #000;
+        box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+      }
+      .btn-action:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+      }
+
+      .servo-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-top: 12px;
+      }
+      .servo-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+      .servo-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: var(--text-sub);
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+      .servo-label span {
+        color: var(--accent-blue);
+      }
+      .servo-slider {
+        width: 100%;
+        accent-color: var(--accent-blue);
+        cursor: pointer;
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+        margin-top: 16px;
+      }
+      .metric-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .metric-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.2rem;
+      }
+      .icon-temp {
+        background: rgba(239, 68, 68, 0.15);
+        color: #f87171;
+      }
+      .icon-hum {
+        background: rgba(56, 189, 248, 0.15);
+        color: #38bdf8;
+      }
+      .icon-dist {
+        background: rgba(139, 92, 246, 0.15);
+        color: #a78bfa;
+      }
+      .icon-batt {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+      }
+      .metric-info .label {
+        font-size: 0.75rem;
+        color: var(--text-sub);
+        display: block;
+        margin-bottom: 2px;
+      }
+      .metric-info .val {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text-main);
+      }
+
+      .ai-hero-card {
+        background: linear-gradient(
+          135deg,
+          rgba(56, 189, 248, 0.1),
+          rgba(16, 185, 129, 0.05)
+        );
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .ai-diag-title {
+        font-size: 0.82rem;
+        color: var(--accent-blue);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .ai-diag-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #ffffff;
+        margin-bottom: 10px;
+      }
+      .progress-bar-bg {
+        width: 100%;
+        height: 8px;
+        background: var(--card-bg);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 6px;
+      }
+      .progress-bar-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #10b981, #34d399);
+        border-radius: 10px;
+        transition: width 0.5s ease;
+      }
+      .accuracy-text {
+        font-size: 0.8rem;
+        color: var(--text-sub);
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .info-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      .info-table tr {
+        border-bottom: 1px solid var(--border-color);
+      }
+      .info-table tr:last-child {
+        border-bottom: none;
+      }
+      .info-table td {
+        padding: 10px 0;
+        font-size: 0.85rem;
+      }
+      .info-table td.td-label {
+        color: var(--text-sub);
+      }
+      .info-table td.td-val {
+        text-align: right;
+        font-weight: 600;
+        color: var(--text-main);
+      }
+      .tag-chip {
+        background: var(--card-bg);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        border: 1px solid var(--border-color);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- TOP NAVBAR -->
+    <div class="navbar">
+      <div class="brand">
+        <div class="brand-icon"><i class="fa-solid fa-leaf"></i></div>
+        <div class="brand-title">
+          <h1>AGRI-VISION AI DASHBOARD</h1>
+          <p>Sistem IoT Dual-ESP32 Monitoring & Kontrol Robot Arm</p>
+        </div>
+      </div>
+      <div class="nav-status">
+        <button class="btn-reset-nav" onclick="resetESP()">
+          <i class="fa-solid fa-rotate-right"></i> Reset ESP32
+        </button>
+        <div id="statusBadge" class="badge-status">
+          <span class="pulse-dot"></span>
+          <span id="statusText">Sistem Terhubung</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN DASHBOARD GRID -->
+    <div class="dashboard-grid">
+      <!-- LEFT COLUMN -->
+      <div style="display: flex; flex-direction: column; gap: 20px">
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-video"></i> Live Visual Stream (ESP32-CAM)
+            </div>
+            <span id="modeTag" class="tag-chip">Mode: Predict AI</span>
+          </div>
+
+          <div class="video-container">
+            <div class="camera-overlay">
+              <i class="fa-solid fa-camera"></i> Node 1: ESP32-CAM OV2640
+            </div>
+            <img id="streamImg" src="" alt="Menghubungkan Stream Kamera..." />
+          </div>
+
+          <div class="camera-controls">
+            <button id="flashBtn" class="btn-action" onclick="toggleFlash()">
+              <i class="fa-solid fa-lightbulb"></i>
+              <span id="btnText">Flash: OFF</span>
+            </button>
+            <button
+              class="btn-action"
+              onclick="setCameraMode('predict')"
+              id="btnModePredict"
+            >
+              <i class="fa-solid fa-brain"></i> AI Predict
+            </button>
+            <button
+              class="btn-action"
+              onclick="setCameraMode('cctv')"
+              id="btnModeCCTV"
+            >
+              <i class="fa-solid fa-bolt"></i> CCTV Fast
+            </button>
+            <button
+              class="btn-action"
+              onclick="setCameraMode('off')"
+              id="btnModeOFF"
+            >
+              <i class="fa-solid fa-power-off"></i> Kamera OFF
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-robot"></i> Kontrol Lengan Robot (4 Servo
+              via DevKit)
+            </div>
+            <span class="tag-chip">ESP32 DevKit V1</span>
+          </div>
+
+          <div class="servo-grid">
+            <div class="servo-card">
+              <div class="servo-label">
+                Base (GPIO 12): <span id="valBase">90°</span>
+              </div>
+              <input
+                type="range"
+                class="servo-slider"
+                id="sliderBase"
+                min="0"
+                max="180"
+                value="90"
+                oninput="updateServo('Base', this.value)"
+              />
+            </div>
+            <div class="servo-card">
+              <div class="servo-label">
+                Shoulder (GPIO 14): <span id="valShoulder">90°</span>
+              </div>
+              <input
+                type="range"
+                class="servo-slider"
+                id="sliderShoulder"
+                min="0"
+                max="180"
+                value="90"
+                oninput="updateServo('Shoulder', this.value)"
+              />
+            </div>
+            <div class="servo-card">
+              <div class="servo-label">
+                Elbow (GPIO 27): <span id="valElbow">90°</span>
+              </div>
+              <input
+                type="range"
+                class="servo-slider"
+                id="sliderElbow"
+                min="0"
+                max="180"
+                value="90"
+                oninput="updateServo('Elbow', this.value)"
+              />
+            </div>
+            <div class="servo-card">
+              <div class="servo-label">
+                Gripper (GPIO 13): <span id="valGripper">90°</span>
+              </div>
+              <input
+                type="range"
+                class="servo-slider"
+                id="sliderGripper"
+                min="0"
+                max="180"
+                value="90"
+                oninput="updateServo('Gripper', this.value)"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-icon icon-temp">
+              <i class="fa-solid fa-temperature-half"></i>
+            </div>
+            <div class="metric-info">
+              <span class="label">Suhu Udara</span>
+              <span id="valTemp" class="val">-- °C</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon icon-hum">
+              <i class="fa-solid fa-droplet"></i>
+            </div>
+            <div class="metric-info">
+              <span class="label">Kelembaban Udara</span>
+              <span id="valHum" class="val">-- %</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon icon-dist">
+              <i class="fa-solid fa-ruler-combined"></i>
+            </div>
+            <div class="metric-info">
+              <span class="label">Jarak Objek Daun</span>
+              <span id="valDist" class="val">-- cm</span>
+            </div>
+          </div>
+
+          <div class="metric-card">
+            <div class="metric-icon icon-batt">
+              <i class="fa-solid fa-battery-full"></i>
+            </div>
+            <div class="metric-info">
+              <span class="label">Kapasitas Baterai (3P)</span>
+              <span id="valBatt" class="val">~100% (7500 mAh)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div style="display: flex; flex-direction: column; gap: 24px">
+        <div class="panel-card">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-brain"></i> Hasil Diagnosa AI Model
+            </div>
+            <span class="tag-chip">FastAPI Backend</span>
+          </div>
+
+          <div class="ai-hero-card">
+            <div class="ai-diag-title">Prediksi Penyakit Daun</div>
+            <div id="penyakitText" class="ai-diag-value">Menunggu Data...</div>
+
+            <div class="progress-bar-bg">
+              <div id="accuracyBar" class="progress-bar-fill"></div>
+            </div>
+            <div class="accuracy-text">
+              <span>Tingkat Kepercayaan (Akurasi)</span>
+              <strong id="akurasiText" style="color: var(--accent-green)"
+                >0.00%</strong
+              >
+            </div>
+          </div>
+
+          <table class="info-table">
+            <tr>
+              <td class="td-label">
+                <i class="fa-solid fa-microchip"></i> Node Sensor & Robot Arm
+              </td>
+              <td class="td-val">ESP32 DevKit V1</td>
+            </tr>
+            <tr>
+              <td class="td-label">
+                <i class="fa-solid fa-network-wired"></i> Antar-Board Serial
+              </td>
+              <td class="td-val">UART2 (115200 Baud)</td>
+            </tr>
+            <tr>
+              <td class="td-label">
+                <i class="fa-solid fa-desktop"></i> Output Tampilan Fisik
+              </td>
+              <td class="td-val">Dual OLED 0.96" (I2C)</td>
+            </tr>
+            <tr>
+              <td class="td-label">
+                <i class="fa-solid fa-server"></i> REST API Endpoint
+              </td>
+              <td class="td-val">/predict & /set-servo</td>
+            </tr>
+            <tr>
+              <td class="td-label">
+                <i class="fa-solid fa-clock"></i> Latensi Stream CCTV
+              </td>
+              <td class="td-val">
+                <span style="color: var(--accent-green)">~30 ms</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="panel-card" style="flex: 1">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-circle-info"></i> Arsitektur Sistem
+              Dual-Node
+            </div>
+          </div>
+          <p
+            style="font-size: 0.85rem; color: var(--text-sub); line-height: 1.6"
+          >
+            Beban komputasi dibagi secara efisien: Node ESP32-CAM menangani
+            *frame capture* & transmisi Wi-Fi, sedangkan Node ESP32 DevKit
+            menangani pengukuran sensor iklim mikro, kontrol PWM 4-servo robot
+            arm, serta rendering informasi pada Dual-OLED.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "https://swooned-brigade-ludicrous.ngrok-free.dev";
+      const imgElement = document.getElementById("streamImg");
+      let servoDebounceTimer = null;
+
+      async function reloadImage() {
+        try {
+          const response = await fetch(
+            API_BASE_URL + "/video_feed?t=" + new Date().getTime(),
+            { headers: { "ngrok-skip-browser-warning": "true" } },
+          );
+
+          if (!response.ok) throw new Error("Gagal mengambil frame gambar");
+
+          const blob = await response.blob();
+          if (imgElement.src && imgElement.src.startsWith("blob:")) {
+            URL.revokeObjectURL(imgElement.src);
+          }
+
+          imgElement.src = URL.createObjectURL(blob);
+          setTimeout(reloadImage, 80);
+        } catch (err) {
+          console.error("Video feed error:", err);
+          setTimeout(reloadImage, 1000);
+        }
+      }
+
+      async function fetchStatus() {
+        try {
+          let res = await fetch(`${API_BASE_URL}/get-flash`, {
+            headers: { "ngrok-skip-browser-warning": "true" },
+          });
+          let data = await res.json();
+
+          const penyakit = data.prediksi || "Menunggu Kamera...";
+          const akurasi = data.akurasi || "0.00%";
+
+          document.getElementById("penyakitText").innerText = penyakit;
+          document.getElementById("akurasiText").innerText = akurasi;
+
+          document.getElementById("valTemp").innerText =
+            (data.temp || "--") + " °C";
+          document.getElementById("valHum").innerText =
+            (data.hum || "--") + " %";
+          document.getElementById("valDist").innerText =
+            (data.dist || "--") + " cm";
+
+          const numAccuracy = parseFloat(akurasi.replace("%", "")) || 0;
+          document.getElementById("accuracyBar").style.width =
+            numAccuracy + "%";
+
+          const badge = document.getElementById("statusBadge");
+          const badgeText = document.getElementById("statusText");
+          badge.classList.remove("offline");
+          badgeText.innerText = "Sistem Terhubung";
+
+          const btn = document.getElementById("flashBtn");
+          const btnText = document.getElementById("btnText");
+          if (data.flash) {
+            btnText.innerText = "Flash: ON 💡";
+            btn.className = "btn-action btn-flash-on";
+          } else {
+            btnText.innerText = "Flash: OFF 🌙";
+            btn.className = "btn-action";
+          }
+
+          const mode = data.mode || "predict";
+          document.getElementById("btnModePredict").style.border =
+            mode === "predict"
+              ? "2px solid #10b981"
+              : "1px solid var(--border-color)";
+          document.getElementById("btnModeCCTV").style.border =
+            mode === "cctv"
+              ? "2px solid #38bdf8"
+              : "1px solid var(--border-color)";
+          document.getElementById("btnModeOFF").style.border =
+            mode === "off"
+              ? "2px solid #ef4444"
+              : "1px solid var(--border-color)";
+
+          const modeTag = document.getElementById("modeTag");
+          if (mode === "predict") modeTag.innerText = "Mode: AI Predict";
+          else if (mode === "cctv")
+            modeTag.innerText = "Mode: CCTV Fast (Robot Active)";
+          else modeTag.innerText = "Mode: Kamera Nonaktif (OFF)";
+        } catch (err) {
+          const badge = document.getElementById("statusBadge");
+          const badgeText = document.getElementById("statusText");
+          badge.classList.add("offline");
+          badgeText.innerText = "Sistem Terputus";
+          console.error("Gagal mengambil status telemetry:", err);
+        }
+      }
+
+      async function setCameraMode(mode) {
+        try {
+          await fetch(`${API_BASE_URL}/set-camera-mode?mode=${mode}`, {
+            headers: { "ngrok-skip-browser-warning": "true" },
+          });
+          fetchStatus();
+        } catch (err) {
+          console.error("Gagal mengganti mode kamera:", err);
+        }
+      }
+
+      async function resetESP() {
+        if (confirm("Apakah Anda yakin ingin merestart/reboot ESP32-CAM?")) {
+          try {
+            await fetch(`${API_BASE_URL}/reset-esp`, {
+              headers: { "ngrok-skip-browser-warning": "true" },
+            });
+            alert(
+              "Sinyal Reset terkirim! ESP32-CAM akan mereboot dalam beberapa detik.",
+            );
+          } catch (err) {
+            console.error("Gagal mengirim perintah reset:", err);
+          }
+        }
+      }
+
+      async function toggleFlash() {
+        try {
+          await fetch(`${API_BASE_URL}/toggle-flash`, {
+            method: "POST",
+            headers: { "ngrok-skip-browser-warning": "true" },
+          });
+          fetchStatus();
+        } catch (err) {
+          console.error("Gagal mengubah status flash:", err);
+        }
+      }
+
+      function updateServo(name, val) {
+        document.getElementById(`val${name}`).innerText = val + "°";
+
+        clearTimeout(servoDebounceTimer);
+        servoDebounceTimer = setTimeout(async () => {
+          try {
+            const b = document.getElementById("sliderBase").value;
+            const s = document.getElementById("sliderShoulder").value;
+            const e = document.getElementById("sliderElbow").value;
+            const g = document.getElementById("sliderGripper").value;
+
+            await fetch(
+              `${API_BASE_URL}/set-servo?base=${b}&shoulder=${s}&elbow=${e}&gripper=${g}`,
+              {
+                headers: { "ngrok-skip-browser-warning": "true" },
+              },
+            );
+          } catch (err) {
+            console.error("Gagal mengupdate posisi servo:", err);
+          }
+        }, 50);
+      }
+
+      reloadImage();
+      setInterval(fetchStatus, 1000);
+      fetchStatus();
+    </script>
+  </body>
+</html>

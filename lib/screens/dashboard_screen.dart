@@ -91,16 +91,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  void _handleTogglePumpMode() {
-    setState(() {
-      final isAuto = !_actuatorState.pumpAutoMode;
-      _actuatorState = _actuatorState.copyWith(
-        pumpAutoMode: isAuto,
-        pumpActive: !isAuto,
-      );
-    });
-  }
-
   void _handleMarkAllNotificationsRead() {
     setState(() {
       _notifications = _notifications
@@ -122,10 +112,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           BerandaTabView(
             sensorData: _sensorData,
-            actuatorState: _actuatorState,
             activities: _activities,
             onNavigateToTab: _navigateToTab,
-            onTogglePumpMode: _handleTogglePumpMode,
           ),
           DaunTabView(onSaveToHistory: _handleSaveScan),
           KameraTabView(onCaptureForAi: _handleNewScan),
