@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:chiliguard/database/database_helper.dart';
-import 'package:chiliguard/models/disease_model.dart';
 import 'package:chiliguard/models/scan_result_model.dart';
 import 'package:chiliguard/models/sensor_data_model.dart';
 
@@ -20,10 +19,6 @@ void main() {
   test('SQLite dibuat, diseed, dan query berjalan (tanpa error)', () async {
     final db = await DatabaseHelper.instance.database;
 
-    final diseases = await db.query('diseases');
-    expect(diseases, isNotEmpty, reason: 'Dataset penyakit harus ter-seed');
-    expect(diseases.length, 10);
-
     final scans = await db.query('scan_results');
     expect(scans, isNotEmpty, reason: 'Scan seed harus tersimpan');
     expect(scans.first.keys, containsAll(['sector', 'temperature_at_scan']));
@@ -34,20 +29,6 @@ void main() {
             .toSet();
     expect(sensorColumns,
         containsAll(['air_humidity', 'light_intensity', 'water_tank_level', 'soil_ph']));
-  });
-
-  test('DatabaseHelper.getDiseases memuat data tanpa kategori', () async {
-    final helper = DatabaseHelper.instance;
-    final list = await helper.getDiseases();
-    expect(list.length, 10);
-    expect(list.first, isA<DiseaseModel>());
-  });
-
-  test('getDiseases difilter kategori', () async {
-    final helper = DatabaseHelper.instance;
-    final jamur = await helper.getDiseases(category: 'Jamur');
-    expect(jamur, isNotEmpty);
-    expect(jamur.every((d) => d.category == 'Jamur'), isTrue);
   });
 
   test('getAllScans + insertScan round-trip', () async {

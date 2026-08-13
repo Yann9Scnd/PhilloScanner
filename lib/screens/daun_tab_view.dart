@@ -5,16 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/chat_message_model.dart';
-import '../models/disease_model.dart';
 import '../models/scan_result_model.dart';
-import '../repositories/scan_repository.dart';
 import '../theme/app_theme.dart';
-import 'disease_detail_screen.dart';
 
-/// Tab Daun — 3 Sub-mode:
-///  1) Database Penyakit Tanaman
-///  2) Scan & Diagnosa AI
-///  3) Tanya AI (chat assistant)
+/// Tab Daun — 2 Sub-mode:
+///  1) Scan & Diagnosa AI
+///  2) Tanya AI (chat assistant)
 class DaunTabView extends StatefulWidget {
   final void Function(ScanResultModel)? onSaveToHistory;
   final VoidCallback? onOpenCamera;
@@ -27,13 +23,7 @@ class DaunTabView extends StatefulWidget {
 
 class _DaunTabViewState extends State<DaunTabView> {
   // ===== Sub-mode =====
-  int _activeSubMode = 0; // 0 = database, 1 = scanner, 2 = ai_chat
-
-  // ===== Database state =====
-  final ScanRepository _scanRepository = ScanRepository();
-  int _selectedFilter = 0;
-  String _searchQuery = '';
-  final _filters = ['Semua', 'Jamur', 'Bakteri', 'Virus', 'Hama'];
+  int _activeSubMode = 0; // 0 = scanner, 1 = ai_chat
 
   // ===== Scanner state =====
   bool _isScanning = false;
@@ -161,7 +151,7 @@ class _DaunTabViewState extends State<DaunTabView> {
         aiRecommendations: recommendations,
       );
       _isScanning = false;
-      _activeSubMode = 1;
+      _activeSubMode = 0;
     });
     _showToast('Hasil Scan Diperbarui: $diseaseName');
   }
@@ -265,23 +255,17 @@ class _DaunTabViewState extends State<DaunTabView> {
             child: Row(
               children: [
                 _ModeTab(
-                  icon: Icons.menu_book_rounded,
-                  label: 'Database Penyakit',
+                  icon: Icons.auto_awesome_rounded,
+                  iconColor: const Color(0xFFF59E0B),
+                  label: 'Scan & Diagnosa AI',
                   isActive: _activeSubMode == 0,
                   onTap: () => setState(() => _activeSubMode = 0),
                 ),
                 _ModeTab(
-                  icon: Icons.auto_awesome_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  label: 'Scan & Diagnosa AI',
-                  isActive: _activeSubMode == 1,
-                  onTap: () => setState(() => _activeSubMode = 1),
-                ),
-                _ModeTab(
                   icon: Icons.smart_toy_outlined,
                   label: 'Tanya AI',
-                  isActive: _activeSubMode == 2,
-                  onTap: () => setState(() => _activeSubMode = 2),
+                  isActive: _activeSubMode == 1,
+                  onTap: () => setState(() => _activeSubMode = 1),
                 ),
               ],
             ),
@@ -291,7 +275,6 @@ class _DaunTabViewState extends State<DaunTabView> {
           child: IndexedStack(
             index: _activeSubMode,
             children: [
-              _buildDatabaseMode(context),
               _buildScannerMode(context),
               _buildAiChatMode(context),
             ],
@@ -301,237 +284,7 @@ class _DaunTabViewState extends State<DaunTabView> {
     );
   }
 
-  // ================= MODE 1: DATABASE PENYAKIT =================
-  Widget _buildDatabaseMode(BuildContext context) {
-    final selectedCategory =
-        _selectedFilter == 0 ? null : _filters[_selectedFilter];
-
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.menu_book_rounded,
-                      size: 20, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text('Database Penyakit Tanaman',
-                      style: AppTextStyles.titleMd(color: AppColors.primary)),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Search Bar
-          Container(
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.outlineVariant),
-            ),
-            child: Row(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Icon(Icons.search, color: AppColors.outline),
-                ),
-                Expanded(
-                  child: TextField(
-                    onChanged: (val) {
-                      setState(() => _searchQuery = val.toLowerCase());
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Cari penyakit tanaman...',
-                      hintStyle: AppTextStyles.bodyMd(color: AppColors.outline),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    style: AppTextStyles.bodyMd(color: AppColors.onSurface),
-                  ),
-                ),
-                if (_searchQuery.isNotEmpty)
-                  IconButton(
-                    onPressed: () => setState(() => _searchQuery = ''),
-                    icon: const Icon(Icons.clear_rounded, size: 16, color: AppColors.outline),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(_filters.length, (i) {
-                final active = i == _selectedFilter;
-                return Padding(
-                  padding: EdgeInsets.only(right: i < _filters.length - 1 ? 8 : 0),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _selectedFilter = i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: active ? AppColors.primary : AppColors.surfaceContainer,
-                        borderRadius: BorderRadius.circular(9999),
-                      ),
-                      child: Text(
-                        _filters[i],
-                        style: AppTextStyles.labelMd(
-                            color: active
-                                ? AppColors.onPrimary
-                                : AppColors.onSurfaceVariant),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Quick AI Scan Banner
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF1C1C1C), AppColors.primary],
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.secondaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.camera_alt_rounded,
-                      size: 20, color: AppColors.onSecondaryContainer),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Ingin Cek Tanaman Sekarang?',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700)),
-                      Text('Gunakan Kamera ESP32 atau Upload Foto',
-                          style: TextStyle(color: Color(0xFF9FD0F5), fontSize: 11)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (widget.onOpenCamera != null)
-                  GestureDetector(
-                    onTap: widget.onOpenCamera,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF34D399),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text('Live ESP32',
-                          style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                GestureDetector(
-                  onTap: () => setState(() => _activeSubMode = 1),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text('Scan AI',
-                        style: TextStyle(
-                            color: AppColors.onSecondaryContainer,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Disease Cards
-          FutureBuilder<List<DiseaseModel>>(
-            future: _scanRepository.getDiseases(category: selectedCategory),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Padding(
-                  padding: EdgeInsets.all(32),
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text('Gagal memuat dataset: ${snapshot.error}',
-                      style: AppTextStyles.bodyMd(color: AppColors.error)),
-                );
-              }
-
-              var diseases = snapshot.data ?? [];
-              if (_searchQuery.isNotEmpty) {
-                diseases = diseases
-                    .where((d) =>
-                        d.name.toLowerCase().contains(_searchQuery) ||
-                        d.scientificName.toLowerCase().contains(_searchQuery))
-                    .toList();
-              }
-
-              if (diseases.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Tidak ditemukan penyakit tanaman dengan kata kunci "$_searchQuery".',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant),
-                    ),
-                  ),
-                );
-              }
-
-              return Column(
-                children: diseases.map((disease) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _DiseaseCard(disease: disease),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ================= MODE 2: SCAN & DIAGNOSA AI =================
+  // ================= MODE 1: SCAN & DIAGNOSA AI =================
   Widget _buildScannerMode(BuildContext context) {
     final scan = _scanResult;
 
@@ -882,7 +635,7 @@ class _DaunTabViewState extends State<DaunTabView> {
                       const SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => setState(() => _activeSubMode = 2),
+                          onPressed: () => setState(() => _activeSubMode = 1),
                           icon: const Icon(Icons.smart_toy_outlined,
                               size: 18, color: Color(0xFFF59E0B)),
                           label: const Text('Konsultasi AI'),
@@ -917,7 +670,7 @@ class _DaunTabViewState extends State<DaunTabView> {
     );
   }
 
-  // ================= MODE 3: TANYA AI =================
+  // ================= MODE 2: TANYA AI =================
   Widget _buildAiChatMode(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -1168,93 +921,4 @@ class _SampleLeaf {
     required this.image,
     required this.recommendations,
   });
-}
-
-// ===== Disease Card =====
-class _DiseaseCard extends StatelessWidget {
-  final DiseaseModel disease;
-  const _DiseaseCard({required this.disease});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.05)),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 4,
-              offset: const Offset(0, 1))
-        ],
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              disease.imageUrl,
-              width: 64,
-              height: 64,
-              fit: BoxFit.cover,
-              errorBuilder: (ctx, e, st) => Container(
-                width: 64,
-                height: 64,
-                color: AppColors.surfaceContainer,
-                child: const Icon(Icons.eco, color: AppColors.primary),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(disease.name,
-                          style: AppTextStyles.labelLg(color: AppColors.primary)
-                              .copyWith(fontWeight: FontWeight.w600)),
-                    ),
-                    Text(disease.category,
-                        style: AppTextStyles.labelMd(color: AppColors.secondary)
-                            .copyWith(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(disease.scientificName,
-                    style: AppTextStyles.labelMd(
-                        color: AppColors.onSurfaceVariant)),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => DiseaseDetailScreen(disease: disease),
-                      ),
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      Text('Pelajari Selengkapnya',
-                          style: AppTextStyles.labelLg(color: AppColors.primary)
-                              .copyWith(fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward_rounded,
-                          size: 16, color: AppColors.primary),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../models/actuator_state_model.dart';
-import '../models/disease_model.dart';
 import '../models/scan_result_model.dart';
 import '../models/sensor_data_model.dart';
 import 'esp_service.dart';
@@ -66,18 +65,6 @@ class ApiClient {
       }
     } catch (_) {}
     throw ApiException(res.statusCode, message);
-  }
-
-  /// GET /api/diseases?category=...
-  Future<List<DiseaseModel>> fetchDiseases({String? category}) async {
-    final uri = _uri('diseases',
-        (category == null || category == 'Semua') ? null : {'category': category});
-    final res = await _client.get(uri);
-    if (res.statusCode != 200) _throw(res);
-    final list = _list(jsonDecode(res.body)) ?? [];
-    return list
-        .map((e) => DiseaseModel.fromMap((e as Map).cast<String, dynamic>()))
-        .toList();
   }
 
   /// GET /api/scans

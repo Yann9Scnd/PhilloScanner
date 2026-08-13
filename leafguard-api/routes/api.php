@@ -3,13 +3,9 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\ActuatorController;
-use App\Http\Controllers\Api\DiseaseController;
 use App\Http\Controllers\Api\ScanResultController;
 use App\Http\Controllers\Api\SensorReadingController;
 use App\Http\Controllers\Api\TelemetryController;
-
-// Dataset penyakit
-Route::get('diseases', [DiseaseController::class, 'index']);
 
 // Hasil scan ESP32-CAM
 Route::get('scans', [ScanResultController::class, 'index']);

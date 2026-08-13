@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart'
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-import '../models/disease_model.dart';
 import '../models/scan_result_model.dart';
 import '../models/sensor_data_model.dart';
 
@@ -37,7 +36,6 @@ class DatabaseHelper {
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
-          await db.execute('DROP TABLE IF EXISTS diseases');
           await db.execute('DROP TABLE IF EXISTS scan_results');
           await db.execute('DROP TABLE IF EXISTS sensor_readings');
           await _createDB(db, newVersion);
@@ -86,21 +84,7 @@ class DatabaseHelper {
   }
 
   Future<void> _createDB(Database db, int version) async {
-    // 1. Diseases dataset table
-    await db.execute('''
-      CREATE TABLE diseases (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        scientific_name TEXT NOT NULL,
-        category TEXT NOT NULL,
-        image_url TEXT NOT NULL,
-        description TEXT NOT NULL,
-        symptoms TEXT NOT NULL,
-        prevention_steps TEXT NOT NULL
-      )
-    ''');
-
-    // 2. Scan Results table (ESP32 photos & AI diagnosis)
+    // 1. Scan Results table (ESP32 photos & AI diagnosis)
     await db.execute('''
       CREATE TABLE scan_results (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,7 +102,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 3. Sensor Readings table (telemetri ESP32 Node 2)
+    // 2. Sensor Readings table (telemetri ESP32 Node 2)
     await db.execute('''
       CREATE TABLE sensor_readings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,169 +120,11 @@ class DatabaseHelper {
       )
     ''');
 
-    // Seed initial disease dataset
+    // Seed data awal (scan ESP32-CAM)
     await _seedInitialData(db);
   }
 
   Future<void> _seedInitialData(Database db) async {
-    // Seed Dataset Diseases
-    final initialDiseases = [
-      const DiseaseModel(
-        name: 'Bercak Daun (Leaf Spot)',
-        scientificName: 'Cercospora capsici',
-        category: 'Jamur',
-        imageUrl:
-            'https://placehold.co/600x400/7CBF8A/FFFFFF?text=Bercak%20Daun',
-        description:
-            'Penyakit bercak daun disebabkan jamur Cercospora capsici yang menyerang daun cabai. Muncul bercak cokelat keabu-abuan yang menyebar dari daun bagian bawah ke atas.',
-        symptoms: 'Bercak lingkaran kecil cokelat tua dengan pusat kelabu, daun menguning lalu rontok.',
-        preventionSteps: [
-          'Pilih benih varietas tahan penyakit.',
-          'Atur jarak tanam agar sirkulasi udara lancar.',
-          'Hindari penyiraman dari atas daun dan jaga kebersihan lahan.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Karat Daun (Rust)',
-        scientificName: 'Puccinia sorghi',
-        category: 'Jamur',
-        imageUrl:
-            'https://placehold.co/600x400/7CBF8A/FFFFFF?text=Karat%20Daun',
-        description:
-            'Penyakit karat menyerang daun dengan bintik oranye keemasan seperti karat pada permukaan bawah daun, umum muncul pada musim lembap.',
-        symptoms: 'Pustul berisi spora berwarna serbuk karat cokelat kemerahan di permukaan bawah daun.',
-        preventionSteps: [
-          'Gunakan varietas tahan karat.',
-          'Lakukan rotasi tanaman secara teratur.',
-          'Jaga sirkulasi udara dan hindari kelembapan berlebih.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Layu Fusarium',
-        scientificName: 'Fusarium oxysporum',
-        category: 'Jamur',
-        imageUrl:
-            'https://placehold.co/600x400/7CBF8A/FFFFFF?text=Layu%20Fusarium',
-        description:
-            'Penyakit layu yang disebabkan jamur tanah Fusarium oxysporum. Tanaman layu mendadak dan pembuluh batang berwarna cokelat.',
-        symptoms: 'Daun bawah menguning lalu layu, batang tampak cekung, dan pangkal batang membusuk.',
-        preventionSteps: [
-          'Gunakan benih sehat dan varietas tahan layu.',
-          'Sterilkan media tanam dengan cara solarisasi.',
-          'Cabut dan musnahkan tanaman yang terinfeksi.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Antraknosa (Patek)',
-        scientificName: 'Colletotrichum capsici',
-        category: 'Jamur',
-        imageUrl:
-            'https://placehold.co/600x400/7CBF8A/FFFFFF?text=Antraknosa',
-        description:
-            'Penyakit patek menyerang buah dan daun cabai. Bercak cokelat dengan pusat lebih gelap seperti cincin dan buah membusuk berlendir.',
-        symptoms: 'Bercak cekung cokelat pada buah dengan cincin spora oranye kemerahan, daun menguning.',
-        preventionSteps: [
-          'Gunakan fungisida nabati seperti ekstrak bawang putih.',
-          'Panen tepat waktu dan buang buah yang terserang.',
-          'Jaga kebersihan alat dan gulma sekitar lahan.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Busuk Akar (Root Rot)',
-        scientificName: 'Pythium spp.',
-        category: 'Bakteri',
-        imageUrl:
-            'https://placehold.co/600x400/6B8FBF/FFFFFF?text=Busuk%20Akar',
-        description:
-            'Busuk akar berkembang akibat media tanam terlalu basah dan serangan patogen tanah. Akar membusuk sehingga tanaman tidak dapat menyerap air.',
-        symptoms: 'Daun menguning tiba-tiba, layu, dan batang bagian bawah lembek berair.',
-        preventionSteps: [
-          'Atur drainase pot atau media tanam.',
-          'Hentikan penyiraman sementara hingga media agak kering.',
-          'Gunakan agen hayati Trichoderma pada media tanam.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Layu Bakteri',
-        scientificName: 'Ralstonia solanacearum',
-        category: 'Bakteri',
-        imageUrl:
-            'https://placehold.co/600x400/6B8FBF/FFFFFF?text=Layu%20Bakteri',
-        description:
-            'Penyakit layu bakteri yang mematikan pada cabai. Bakteri menyumbat pembuluh sehingga tanaman layu permanen meski tanah lembap.',
-        symptoms: 'Layu cepat tanpa daun menguning, batang dipotong mengeluarkan lendir putih, akar membusuk.',
-        preventionSteps: [
-          'Gunakan varietas tahan dan benih bebas penyakit.',
-          'Lakukan rotasi dengan tanaman bukan golongan terong-terongan.',
-          'Solarisasi tanah sebelum penanaman.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Bercak Bakteri',
-        scientificName: 'Xanthomonas campestris',
-        category: 'Bakteri',
-        imageUrl:
-            'https://placehold.co/600x400/6B8FBF/FFFFFF?text=Bercak%20Bakteri',
-        description:
-            'Bercak bakteri menyerang daun dan buah. Bercak cokelat basah dengan tepi kuning yang dapat menyebabkan daun gugur.',
-        symptoms: 'Bercak kecil berair cokelat yang menyatu, daun keriting dan rontok.',
-        preventionSteps: [
-          'Gunakan benih bebas penyakit.',
-          'Hindari penyiraman dengan percikan air.',
-          'Pisahkan dan buang tanaman yang sakit.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Virus Mosaik',
-        scientificName: 'Cucumber mosaic virus (CMV)',
-        category: 'Virus',
-        imageUrl:
-            'https://placehold.co/600x400/C9A86B/FFFFFF?text=Virus%20Mosaik',
-        description:
-            'Virus mosaik disebarkan oleh kutu daun. Daun tampak belang-belang kuning-hijau, tanaman kerdil, dan buah kecil tidak normal.',
-        symptoms: 'Daun belang mosaik, keriting, tepi menggulung, dan tanaman kerdil.',
-        preventionSteps: [
-          'Kendalikan kutu daun sebagai vektor penyebar virus.',
-          'Gunakan benih bebas virus.',
-          'Cabut tanaman terinfeksi segera.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Daun Keriting Kuning (Virus Kuning)',
-        scientificName: 'Begomovirus (PepYLCV)',
-        category: 'Virus',
-        imageUrl:
-            'https://placehold.co/600x400/C9A86B/FFFFFF?text=Virus%20Kuning',
-        description:
-            'Penyakit kuning keriting disebarkan kutu kebul. Daun muda menguning dan mengeriting sehingga pertumbuhan terhambat.',
-        symptoms: 'Daun muda menguning dan mengeriting, tanaman kerdil, dan bunga rontok.',
-        preventionSteps: [
-          'Pasang perangkap kuning untuk menangkap kutu kebul.',
-          'Tutup lahan dengan mulsa plastik perak.',
-          'Gunakan varietas tahan virus kuning.'
-        ],
-      ),
-      const DiseaseModel(
-        name: 'Kutu Daun (Aphid)',
-        scientificName: 'Myzus persicae',
-        category: 'Hama',
-        imageUrl:
-            'https://placehold.co/600x400/C97B6B/FFFFFF?text=Kutu%20Daun',
-        description:
-            'Serangan hama kutu daun mengisap cairan tanaman dan menjadi vektor virus. Koloni kutu tampak di pucuk dan daun muda.',
-        symptoms: 'Daun keriting dan lengket (embun madu), pucuk pertumbuhan terhambat.',
-        preventionSteps: [
-          'Kendalikan dengan predator alami seperti kepik.',
-          'Semprot air sabun atau pestisida nabati.',
-          'Jaga kebersihan gulma di sekitar lahan.'
-        ],
-      ),
-    ];
-
-    for (var disease in initialDiseases) {
-      await db.insert('diseases', disease.toMap());
-    }
-
     // Seed Initial ESP32 Scan Results
     final initialScans = [
       const ScanResultModel(
@@ -357,22 +183,6 @@ class DatabaseHelper {
       return ScanResultModel.fromMap(result.first);
     }
     return null;
-  }
-
-  Future<List<DiseaseModel>> getDiseases({String? category}) async {
-    final db = await instance.database;
-    List<Map<String, dynamic>> result;
-    if (category != null && category != 'Semua') {
-      result = await db.query(
-        'diseases',
-        where: 'category = ?',
-        whereArgs: [category],
-        orderBy: 'id ASC',
-      );
-    } else {
-      result = await db.query('diseases', orderBy: 'id ASC');
-    }
-    return result.map((json) => DiseaseModel.fromMap(json)).toList();
   }
 
   Future<int> insertSensorReading(SensorDataModel reading) async {
