@@ -141,6 +141,8 @@ CREATE TABLE IF NOT EXISTS `sensor_readings` (
   `light_intensity` varchar(255) DEFAULT NULL,
   `water_tank_level` varchar(255) DEFAULT NULL,
   `soil_ph` varchar(255) DEFAULT NULL,
+  `battery_level` varchar(255) DEFAULT NULL,
+  `leaf_distance` varchar(255) DEFAULT NULL,
   `pump_status` varchar(255) DEFAULT NULL,
   `timestamp` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,

@@ -14,6 +14,8 @@ class SensorReading extends Model
         'light_intensity',
         'water_tank_level',
         'soil_ph',
+        'battery_level',
+        'leaf_distance',
         'pump_status',
         'timestamp',
     ];

@@ -24,8 +24,14 @@ class TelemetryController extends Controller
      *   "lightIntensity": 18200,
      *   "waterTankLevel": 85,
      *   "soilPh": 6.3,
+     *   "batteryLevel": 86,
+     *   "leafDistance": 25,
      *   "pumpStatus": "Standby"
      * }
+     *
+     * Protokol UART code.ino (temp,hum,dist,soil):
+     *   temp -> temperature, hum -> air_humidity,
+     *   dist -> leaf_distance, soil -> soil_moisture
      */
     public function store(Request $request)
     {
@@ -33,12 +39,14 @@ class TelemetryController extends Controller
 
         $reading = SensorReading::create([
             'device_id' => $data['node'] ?? $data['device_id'] ?? 'ESP32 Node 2',
-            'soil_moisture' => (string) ($data['soilMoisture'] ?? $data['soil_moisture'] ?? '0'),
+            'soil_moisture' => (string) ($data['soilMoisture'] ?? $data['soil'] ?? $data['soil_moisture'] ?? '0'),
             'temperature' => (string) ($data['temp'] ?? $data['temperature'] ?? '0'),
-            'air_humidity' => (string) ($data['humidity'] ?? $data['air_humidity'] ?? '0'),
+            'air_humidity' => (string) ($data['humidity'] ?? $data['hum'] ?? $data['air_humidity'] ?? '0'),
             'light_intensity' => (string) ($data['lightIntensity'] ?? $data['light_intensity'] ?? '0'),
             'water_tank_level' => (string) ($data['waterTankLevel'] ?? $data['water_tank_level'] ?? '0'),
             'soil_ph' => (string) ($data['soilPh'] ?? $data['soil_ph'] ?? '0'),
+            'battery_level' => (string) ($data['batteryLevel'] ?? $data['battery_level'] ?? $data['batt'] ?? '0'),
+            'leaf_distance' => (string) ($data['leafDistance'] ?? $data['leaf_distance'] ?? $data['dist'] ?? '0'),
             'pump_status' => (string) ($data['pumpStatus'] ?? $data['pump_status'] ?? 'Standby'),
             'timestamp' => $data['timestamp'] ?? now()->toDateTimeString(),
         ]);

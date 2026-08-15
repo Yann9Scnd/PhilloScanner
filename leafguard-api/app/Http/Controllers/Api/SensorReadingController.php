@@ -41,6 +41,8 @@ class SensorReadingController extends Controller
             'light_intensity' => 'nullable|string',
             'water_tank_level' => 'nullable|string',
             'soil_ph' => 'nullable|string',
+            'battery_level' => 'nullable|string',
+            'leaf_distance' => 'nullable|string',
             'pump_status' => 'nullable|string',
             'timestamp' => 'nullable|string',
         ]);
