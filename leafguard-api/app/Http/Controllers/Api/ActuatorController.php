@@ -18,6 +18,9 @@ class ActuatorController extends Controller
             $state = ActuatorState::create([
                 'pump_auto_mode' => true,
                 'pump_active' => false,
+                'pesticide_active' => false,
+                'laser_active' => false,
+                'led_active' => false,
                 'misting_active' => true,
                 'grow_light_active' => false,
                 'fan_active' => true,
@@ -34,6 +37,9 @@ class ActuatorController extends Controller
         $validated = $request->validate([
             'pump_auto_mode' => 'nullable|boolean',
             'pump_active' => 'nullable|boolean',
+            'pesticide_active' => 'nullable|boolean',
+            'laser_active' => 'nullable|boolean',
+            'led_active' => 'nullable|boolean',
             'misting_active' => 'nullable|boolean',
             'grow_light_active' => 'nullable|boolean',
             'fan_active' => 'nullable|boolean',

@@ -1,27 +1,3 @@
-/*
-  CHILIGUARD IOT - NODE SENSOR ESP32 DEVKIT
-  ==========================================
-  Firmware otoritatif: sama persis dengan `code.ino` di root repo.
-
-  Node sensor (UART-based, TANPA WiFi):
-    - DHT11/22   GPIO 4   -> Suhu Udara (°C) & Kelembapan Udara (%) [DHTTYPE bisa ganti DHT22]
-    - HC-SR04    TRIG 5 / ECHO 18 -> Jarak Daun (cm) [ultrasonik]
-    - Soil       GPIO 34  -> Kelembapan Tanah (%) [kalibrasi AIR_VALUE=3200 / WATER_VALUE=1500]
-    - Laser      GPIO 15  -> berkedip tiap 1 detik (non-blocking)
-    - LED        GPIO 32  -> selalu menyala
-    - Dual OLED  I2C bus 0 (SDA19/SCL23) & bus 1 (SDA21/SCL22), addr 0x3C
-      - OLED kiri : hasil diagnosa AI dari ESP32-CAM (penyakit,akurasi)
-      - OLED kanan: monitor sensor (jarak, suhu, kelembapan udara, tanah)
-
-  Alur komunikasi (UART2):
-    ESP32 Sensor (TX2=27/RX2=26) <-> ESP32-CAM:
-      - Sensor -> CAM: "temp,hum,dist,soil\n" tiap 500 ms (Serial2 115200)
-      - CAM    -> Sensor: "penyakit,akurasi\n" (ditampilkan di OLED kiri)
-
-  Board: ESP32 DevKit V1 | Arduino IDE (esp32 core)
-  Library: Adafruit SSD1306, Adafruit GFX, DHT sensor library
-*/
-
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>

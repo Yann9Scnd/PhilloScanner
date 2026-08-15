@@ -16,8 +16,9 @@ class KameraTabView extends StatefulWidget {
 class _KameraTabViewState extends State<KameraTabView> {
   final EspService _espService = EspService.instance;
 
-  int _panAngle = 90;
-  int _tiltAngle = 45;
+  int _baseAngle = 90;
+  int _shoulderAngle = 90;
+  int _elbowAngle = 90;
   bool _flashOn = false;
   bool _isCapturing = false;
   bool _isAnalyzing = false;
@@ -28,13 +29,11 @@ class _KameraTabViewState extends State<KameraTabView> {
     'center': 'https://images.unsplash.com/photo-1592417817098-8f3d6eb23659?auto=format&fit=crop&w=800&q=80',
     'left': 'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?auto=format&fit=crop&w=800&q=80',
     'right': 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=800&q=80',
-    'up': 'https://images.unsplash.com/photo-1588628566587-dbd176de5774?auto=format&fit=crop&w=800&q=80',
   };
 
   String get _activeStreamUrl {
-    if (_panAngle < 60) return _streamImages['left']!;
-    if (_panAngle > 120) return _streamImages['right']!;
-    if (_tiltAngle > 65) return _streamImages['up']!;
+    if (_baseAngle < 60) return _streamImages['left']!;
+    if (_baseAngle > 120) return _streamImages['right']!;
     return _streamImages['center']!;
   }
 
@@ -59,34 +58,40 @@ class _KameraTabViewState extends State<KameraTabView> {
     );
   }
 
-  void _handlePanTilt(String direction, {String? positionLabel}) {
-    setState(() {
-      switch (direction) {
-        case 'up':
-          _tiltAngle = (_tiltAngle + 10).clamp(0, 90);
-        case 'down':
-          _tiltAngle = (_tiltAngle - 10).clamp(0, 90);
-        case 'left':
-          _panAngle = (_panAngle - 15).clamp(0, 180);
-        case 'right':
-          _panAngle = (_panAngle + 15).clamp(0, 180);
-        case 'center':
-          _panAngle = 90;
-          _tiltAngle = 45;
-      }
-    });
-    if (positionLabel != null) {
-      _triggerToast('Posisi Kamera: $positionLabel');
+  Future<void> _sendArmServo() async {
+    final ok = await _espService.setArmServo(
+      base: _baseAngle,
+      shoulder: _shoulderAngle,
+      elbow: _elbowAngle,
+    );
+    if (!ok && mounted) {
+      _triggerToast('Gagal terhubung ke server lengan (${_espService.armServerUrl})');
     }
-    _espService.sendServoCommand(direction);
   }
 
-  void _handlePreset(int pan, int tilt, String label) {
+  void _onBaseChanged(double value) {
+    setState(() => _baseAngle = value.round());
+    _sendArmServo();
+  }
+
+  void _onShoulderChanged(double value) {
+    setState(() => _shoulderAngle = value.round());
+    _sendArmServo();
+  }
+
+  void _onElbowChanged(double value) {
+    setState(() => _elbowAngle = value.round());
+    _sendArmServo();
+  }
+
+  void _handlePreset(int base, int shoulder, int elbow, String label) {
     setState(() {
-      _panAngle = pan;
-      _tiltAngle = tilt;
+      _baseAngle = base;
+      _shoulderAngle = shoulder;
+      _elbowAngle = elbow;
     });
-    _triggerToast('Arah Kamera: $label');
+    _triggerToast('Lengan: $label');
+    _sendArmServo();
   }
 
   Future<void> _captureAndAnalyze() async {
@@ -106,7 +111,7 @@ class _KameraTabViewState extends State<KameraTabView> {
 
     if (!mounted) return;
     final newScan = ScanResultModel(
-      deviceId: 'Node 1: ESP32-CAM (Pan-Tilt Bedeng Barat)',
+      deviceId: 'Node 1: ESP32-CAM (Bedeng Barat)',
       imageUrl: _activeStreamUrl,
       diseaseName: 'Bercak Daun Cercospora',
       scientificName: 'Cercospora capsici',
@@ -158,7 +163,7 @@ class _KameraTabViewState extends State<KameraTabView> {
                       style: AppTextStyles.headlineSm(color: AppColors.onSurface),
                     ),
                     Text(
-                      'Monitoring Jarak Jauh & Servo Pan-Tilt Analog',
+                      'Monitoring Jarak Jauh & Kendali Lengan Robot (3 Servo)',
                       style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
                     ),
                   ],
@@ -357,7 +362,7 @@ class _KameraTabViewState extends State<KameraTabView> {
                                 const Icon(Icons.explore_rounded, size: 14, color: Color(0xFFFFC53D)),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Pan: $_panAngle°  Tilt: $_tiltAngle°',
+                                  'Base: $_baseAngle°  Shoulder: $_shoulderAngle°  Elbow: $_elbowAngle°',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
@@ -460,7 +465,7 @@ class _KameraTabViewState extends State<KameraTabView> {
           ),
           const SizedBox(height: 16),
 
-          // Servo Pan-Tilt Control Pad
+          // Servo Lengan Robot (Base / Shoulder / Elbow)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -479,18 +484,26 @@ class _KameraTabViewState extends State<KameraTabView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pengontrol Arah Kamera (Pan-Tilt Servo)',
+                            'Kendali Lengan Robot (3 Servo)',
                             style: AppTextStyles.titleMd(color: AppColors.onSurface),
                           ),
                           Text(
-                            'Arahkan lensa kamera ESP32 secara real-time',
+                            'Geser slider untuk menggerakkan Base, Shoulder & Elbow secara real-time',
                             style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
                           ),
                         ],
                       ),
                     ),
                     TextButton.icon(
-                      onPressed: () => _handlePanTilt('center', positionLabel: 'Depan (Default)'),
+                      onPressed: () {
+                        setState(() {
+                          _baseAngle = 90;
+                          _shoulderAngle = 90;
+                          _elbowAngle = 90;
+                        });
+                        _triggerToast('Lengan: Posisi Tengah (Default)');
+                        _sendArmServo();
+                      },
                       icon: const Icon(Icons.restart_alt_rounded, size: 16),
                       label: const Text('Reset'),
                     ),
@@ -498,134 +511,36 @@ class _KameraTabViewState extends State<KameraTabView> {
                 ),
                 const SizedBox(height: 12),
 
-                // Analog D-Pad
-                Center(
-                  child: Container(
-                    width: 170,
-                    height: 170,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
-                    ),
-                    child: Stack(
-                      children: [
-                        Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '$_panAngle°',
-                                style: AppTextStyles.titleMd(color: AppColors.primary)
-                                    .copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              Text(
-                                'PAN',
-                                style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                                    .copyWith(fontSize: 9, letterSpacing: 1),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '$_tiltAngle°',
-                                style: AppTextStyles.titleMd(color: AppColors.secondary)
-                                    .copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              Text(
-                                'TILT',
-                                style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                                    .copyWith(fontSize: 9, letterSpacing: 1),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Positioned(
-                          top: 8,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: _dPadButton(
-                              icon: Icons.keyboard_arrow_up_rounded,
-                              onTap: () => _handlePanTilt('up', positionLabel: 'Tilt Up'),
-                              radius: const BorderRadius.vertical(top: Radius.circular(14)),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 8,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: _dPadButton(
-                              icon: Icons.keyboard_arrow_down_rounded,
-                              onTap: () => _handlePanTilt('down', positionLabel: 'Tilt Down'),
-                              radius: const BorderRadius.vertical(bottom: Radius.circular(14)),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          left: 8,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: _dPadButton(
-                              icon: Icons.keyboard_arrow_left_rounded,
-                              onTap: () => _handlePanTilt('left', positionLabel: 'Pan Kiri'),
-                              radius: const BorderRadius.horizontal(left: Radius.circular(14)),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 8,
-                          top: 0,
-                          bottom: 0,
-                          child: Center(
-                            child: _dPadButton(
-                              icon: Icons.keyboard_arrow_right_rounded,
-                              onTap: () => _handlePanTilt('right', positionLabel: 'Pan Kanan'),
-                              radius: const BorderRadius.horizontal(right: Radius.circular(14)),
-                            ),
-                          ),
-                        ),
-                        // Center Joystick Ball
-                        Center(
-                          child: Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.20),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: GestureDetector(
-                              onTap: () => _handlePanTilt('center', positionLabel: 'Center'),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.center_focus_weak_rounded,
-                                      size: 18, color: Color(0xFFFFC53D)),
-                                  Text(
-                                    'CENTER',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 7,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                // Slider Base (rotasi horizontal)
+                _ServoSlider(
+                  label: 'Base',
+                  subtitle: 'Rotasi horizontal lengan',
+                  icon: Icons.sync_rounded,
+                  color: const Color(0xFF0288D1),
+                  value: _baseAngle,
+                  onChanged: _onBaseChanged,
+                ),
+                const SizedBox(height: 10),
+
+                // Slider Shoulder (angkat/turun)
+                _ServoSlider(
+                  label: 'Shoulder',
+                  subtitle: 'Naik & turun bagian atas lengan',
+                  icon: Icons.vertical_align_center_rounded,
+                  color: const Color(0xFFF57C00),
+                  value: _shoulderAngle,
+                  onChanged: _onShoulderChanged,
+                ),
+                const SizedBox(height: 10),
+
+                // Slider Elbow (tekuk jangkauan)
+                _ServoSlider(
+                  label: 'Elbow',
+                  subtitle: 'Menekuk jangkauan ke daun',
+                  icon: Icons.architecture_rounded,
+                  color: const Color(0xFF7C3AED),
+                  value: _elbowAngle,
+                  onChanged: _onElbowChanged,
                 ),
                 const SizedBox(height: 16),
 
@@ -642,19 +557,19 @@ class _KameraTabViewState extends State<KameraTabView> {
                   children: [
                     _presetChip(
                       label: 'Bedeng Barat (Cabai Keriting)',
-                      onTap: () => _handlePreset(40, 50, 'Bedeng Barat (Cabai Keriting)'),
+                      onTap: () => _handlePreset(40, 50, 60, 'Bedeng Barat (Cabai Keriting)'),
                     ),
                     _presetChip(
                       label: 'Bedeng Timur (Cabai Rawit)',
-                      onTap: () => _handlePreset(140, 45, 'Bedeng Timur (Cabai Rawit)'),
+                      onTap: () => _handlePreset(140, 45, 55, 'Bedeng Timur (Cabai Rawit)'),
                     ),
                     _presetChip(
                       label: 'Kanopi Daun Cabai',
-                      onTap: () => _handlePreset(90, 70, 'Kanopi Daun Cabai'),
+                      onTap: () => _handlePreset(90, 70, 45, 'Kanopi Daun Cabai'),
                     ),
                     _presetChip(
                       label: 'Pintu Kebun Cabai',
-                      onTap: () => _handlePreset(180, 20, 'Pintu Kebun Cabai'),
+                      onTap: () => _handlePreset(180, 30, 40, 'Pintu Kebun Cabai'),
                     ),
                   ],
                 ),
@@ -765,33 +680,6 @@ class _KameraTabViewState extends State<KameraTabView> {
     );
   }
 
-  Widget _dPadButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required BorderRadius radius,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: radius,
-          border: Border.all(color: const Color(0xFFCBD5E1)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 24, color: AppColors.primary),
-      ),
-    );
-  }
-
   Widget _presetChip({required String label, required VoidCallback onTap}) {
     return GestureDetector(
       onTap: onTap,
@@ -821,6 +709,101 @@ class _KameraTabViewState extends State<KameraTabView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ServoSlider extends StatelessWidget {
+  final String label;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final int value;
+  final ValueChanged<double> onChanged;
+
+  const _ServoSlider({
+    required this.label,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Color(0xFF0F172A),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '$value°',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 10),
+                ),
+                const SizedBox(height: 6),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: color,
+                    thumbColor: color,
+                    inactiveTrackColor: const Color(0xFFE2E8F0),
+                    overlayColor: color.withValues(alpha: 0.12),
+                    trackHeight: 4,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                  ),
+                  child: Slider(
+                    min: 0,
+                    max: 180,
+                    value: value.toDouble(),
+                    onChanged: onChanged,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

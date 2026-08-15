@@ -1,84 +1,105 @@
 # Konfigurasi ESP32 & Integrasi Telemetri (ChiliGuard)
 
-Dokumen ini mencatat semua perubahan dan konfigurasi agar sensor ESP32 dapat
-diambil dengan baik oleh dashboard `index.html` (FastAPI) dan aplikasi Flutter.
+Dokumen ini mencatat konfigurasi firmware dan alur data sensor ESP32 menuju
+aplikasi Flutter. Firmware otoritatif node sensor adalah `code.ino` (root repo);
+sketch `arduino/ESP32_Sensor_Node/ESP32_Sensor_Node.ino` adalah salinannya.
 
 ## 1. Arsitektur
 
 ```
-ESP32 DevKit (Node Sensor)          FastAPI (app.py)                Klien
-+--------------------------+        +-------------------+     +-------------+
-| DHT22   (GPIO 4)         |        | /update-telemetry |     | index.html  |
-| HC-SR04 (GPIO 16/17)     |  POST  | /get-flash        |---->| (dashboard)|
-| Baterai (GPIO 35)        |------->| /telemetry        |     +-------------+
-| Soil    (GPIO 34, ops.)  |  form  +-------------------+     +-------------+
-+--------------------------+        |                 |      | Flutter     |
-                                    +-----------------+      | (SensorTab) |
-                                                            +-------------+
+ESP32 DevKit (Node Sensor)           ESP32-CAM                Backend & Klien
++--------------------------+    UART2   +----------------+    +--------------+
+| DHT11/22   (GPIO 4)      | (TX2 27 /  | ESP32-CAM      |    | Laravel API  |
+| HC-SR04    (TRIG 5,      |  RX2 26)   | (stream video  |    | (histori &   |
+|             ECHO 18)     |===========>|  + relai data) |    |  telemetri)  |
+| Soil       (GPIO 34)     |<===========| (kirim hasil   |    | FastAPI      |
+| Laser      (GPIO 15)     | 500 ms     |  AI via UART)  |    | /set-servo   |
+| LED        (GPIO 32)     |            +----------------+    | (kontrol     |
+| Dual OLED  (bus 0 & 1)   |                                  |  lengan)     |
++--------------------------+                                  +--------------+
+                                                                   |
+                                                              Flutter app
+                                                              (SensorTab,
+                                                               KameraTab)
 ```
 
-- ESP32 membaca sensor lalu `POST /update-telemetry` (form-urlencoded).
-- FastAPI menyimpan ke `telemetry_data` dan menyajikan ulang via
-  `/get-flash` (untuk index.html) dan `/telemetry` (untuk Flutter).
-- Servo robot arm (Base 12, Shoulder 14, Elbow 27, Gripper 13) dikontrol lewat
-  `/set-servo` & `/get-servo`; akan disambungkan saat konfigurasi menu kamera.
+- Node sensor **tidak memakai WiFi** dan **tidak membaca baterai**. Semua data
+  dikirim ke ESP32-CAM via Serial2 (UART2, 115200 baud) dalam format
+  `temp,hum,dist,soil\n` setiap 500 ms.
+- ESP32-CAM membalikkan hasil diagnosa AI (`penyakit,akurasi\n`) via UART yang
+  ditampilkan pada OLED kiri. ESP32-CAM juga bertugas meneruskan telemetri ke
+  FastAPI `/update-telemetry` dan menyajikan stream video.
+- Lengan robot (Base, Shoulder, Elbow) dikontrol lewat FastAPI `/set-servo`
+  yang dipanggil oleh aplikasi Flutter (KameraTab).
 
-## 2. Perubahan file
+## 2. Pinout node sensor (code.ino)
 
-| File | Perubahan |
-|------|-----------|
-| `app (1).py` -> `app.py` | Di-rename, ditambah `soil` & `batt`, endpoint `/telemetry`, timestamp otomatis |
-| `index.html` | Nilai baterai diambil dari `data.batt` telemetri |
-| `arduino/ESP32_Sensor_Node/ESP32_Sensor_Node.ino` | Sketch baru node sensor ESP32 |
+| Fungsi             | GPIO   | Keterangan                                |
+|--------------------|--------|-------------------------------------------|
+| DHT (suhu/udara)   | 4      | `DHTTYPE = DHT11` (ubah jadi `DHT22` bila pakai DHT22) |
+| HC-SR04 TRIG       | 5      |                                            |
+| HC-SR04 ECHO       | 18     | `pulseIn` timeout 20 ms                    |
+| Soil kapasitif     | 34     | ADC; kalibrasi AIR_VALUE=3200 / WATER_VALUE=1500 |
+| Laser              | 15     | Berkedip tiap 1 detik (non-blocking)       |
+| LED selalu nyala   | 32     | `digitalWrite(HIGH)` permanen              |
+| Serial2 TX2/RX2    | 27/26  | UART ke ESP32-CAM (115200)                 |
+| OLED bus 0 (SDA/SCL)| 19/23 | OLED kiri: hasil diagnosa AI               |
+| OLED bus 1 (SDA/SCL)| 21/22 | OLED kanan: monitor sensor                 |
 
-## 3. Kontrak endpoint
+## 3. Protokol UART (node sensor <-> ESP32-CAM)
 
-### POST `/update-telemetry` (dikirim ESP32)
-| Field | Wajib | Contoh |
-|-------|-------|--------|
-| `temp` | ya | `27.5` |
-| `hum` | ya | `72.3` |
-| `dist` | ya | `25.0` |
-| `soil` | opsional | `65` |
-| `batt` | opsional | `86` |
+- Sensor → CAM, tiap 500 ms:
+  ```
+  <suhu>,<kelembapan_udara>,<jarak_cm>,<tanah_persen>\n
+  contoh: 27.5,72,25.3,64\n
+  ```
+- CAM → Sensor (hasil AI):
+  ```
+  <nama_penyakit>,<akurasi_persen>\n
+  contoh: Cercospora capsici,94.50%\n
+  ```
 
-### GET `/telemetry` (untuk Flutter `SensorDataModel.fromMap`)
-```json
-{
-  "device_id": "Node 2: ESP32 Sensor",
-  "temperature": "27.5",
-  "air_humidity": "72.3",
-  "soil_moisture": "65",
-  "battery_level": "86",
-  "leaf_distance": "25.0",
-  "pump_status": "Standby",
-  "timestamp": "13 Aug 2026 • 14:30 WIB"
-}
+## 4. Kontrak endpoint
+
+### GET `/set-servo` (FastAPI app.py, dipanggil KameraTab)
 ```
+/set-servo?base=90&shoulder=90&elbow=90
+```
+Menggerakkan servo lengan robot. Gripper tidak dipakai di aplikasi (3 slider:
+Base, Shoulder, Elbow). URL dari Flutter: `http://<serverIp>:8000/set-servo`.
 
-## 4. Pemetaan sensor ke model Flutter
+### GET `/update-telemetry` (dikirim ESP32-CAM bila meneruskan telemetri)
+Field `temp`, `hum`, `dist`, `soil` (tanpa `batt`, node tidak membaca baterai).
 
-| Sensor (ESP32) | Key FastAPI | Model Flutter |
-|----------------|-------------|---------------|
-| DHT22 suhu | `temp` / `temperature` | `SensorDataModel.temperature` |
-| DHT22 kelembapan | `hum` / `air_humidity` | `SensorDataModel.airHumidity` |
-| HC-SR04 ultrasonik | `dist` / `leaf_distance` | `SensorDataModel.leafDistance` |
-| Baterai (ADC) | `batt` / `battery_level` | `SensorDataModel.batteryLevel` |
-| Soil kapasitif (ops.) | `soil` / `soil_moisture` | `SensorDataModel.soilMoisture` |
+## 5. Pemetaan sensor ke model Flutter
 
-## 5. Cara pakai
+| Sensor (ESP32)          | Key       | Model Flutter        |
+|-------------------------|-----------|----------------------|
+| DHT suhu                | `temp`    | `SensorDataModel.temperature` |
+| DHT kelembapan udara    | `hum`     | `SensorDataModel.airHumidity` |
+| HC-SR04 jarak daun      | `dist`    | `SensorDataModel.leafDistance` |
+| Soil kapasitif          | `soil`    | `SensorDataModel.soilMoisture` |
 
-1. Isi `SSID`, `WIFI_PASSWORD`, dan `SERVER_URL` di sketch Arduino.
-   - Lokal: `http://<IP-komputer>:8000/update-telemetry`
-   - Remote (ngrok): `https://<nama>.ngrok-free.dev/update-telemetry`
-2. Upload `ESP32_Sensor_Node.ino` ke ESP32 DevKit V1.
-3. Jalankan `uvicorn app:app --host 0.0.0.0 --port 8000`.
-4. Buka `index.html` (via FastAPI `/` atau langsung) untuk mengecek nilai
-   Suhu, Kelembapan, Jarak Daun, dan Baterai.
+Tidak ada `battery_level` pada node (tile Baterai di SensorTab sudah dihapus).
 
-## 6. Catatan
+## 6. Aktuator di aplikasi
 
-- Menu kamera (ESP32-CAM) akan dikonfigurasi menyusul; pin servo sudah disiapkan
-  di sketch dan mengikuti GPIO pada `index.html`.
-- Jika ESP32 DevKit dipakai sebagai node tanpa Wi-Fi, kirim data ke ESP32-CAM
-  via UART2 (115200 baud) dan biarkan ESP32-CAM yang meneruskan ke FastAPI.
+| Aktuator        | Status firmware sekarang                 | Aksi app (SensorTab)            |
+|-----------------|------------------------------------------|----------------------------------|
+| Laser (GPIO 15) | Berkedip otomatis di code.ino            | Sakelar tersedia, siap dikendalikan firmware berikutnya |
+| Lampu LED (32)  | Selalu menyala di code.ino               | Sakelar tersedia, siap dikendalikan firmware berikutnya |
+| Pompa Irigasi   | Belum ada di firmware                    | Sakelar tersedia (siapkan tempat) |
+| Pompa Pestisida | Belum ada di firmware                    | Sakelar tersedia (siapkan tempat) |
+
+Perintah sakelar app memanggil `GET http://<sensorIp>/actuator?<nama>=0|1`;
+jika firmware node belum memprosesnya, sakelar hanya mencerminkan status UI.
+
+## 7. Cara pakai
+
+1. Upload `arduino/ESP32_Sensor_Node/ESP32_Sensor_Node.ino` (salinan `code.ino`)
+   ke ESP32 DevKit V1 dengan library: Adafruit SSD1306, Adafruit GFX, DHT.
+2. Hubungkan UART2 node (RX2=26, TX2=27) ke ESP32-CAM sesuai protokol di atas.
+3. Jalankan FastAPI `uvicorn app:app --host 0.0.0.0 --port 8000` untuk
+   `/set-servo` (lengan robot) dan relai telemetri.
+4. Set `serverIp` di aplikasi Flutter (Pengaturan > IP) agar `/set-servo`
+   mengarah ke komputer server.

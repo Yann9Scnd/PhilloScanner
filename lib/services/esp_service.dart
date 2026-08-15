@@ -24,10 +24,21 @@ class EspService {
   /// Base URL API LeafGuard (Laravel)
   String get apiBaseUrl => 'http://$serverIp:8000/api';
 
-  /// Kirim perintah servo pan-tilt ke ESP32-CAM
-  Future<bool> sendServoCommand(String action) async {
+  /// Server kamera/robot arm (FastAPI app.py). Dipakai endpoint /set-servo
+  /// untuk menggerakkan servo lengan (Base, Shoulder, Elbow).
+  String get armServerUrl => 'http://$serverIp:8000';
+
+  /// Kirim posisi 3 servo lengan robot (Base/Shoulder/Elbow) ke FastAPI
+  /// `/set-servo`, sama seperti slider pada index.html.
+  Future<bool> setArmServo({
+    int base = 90,
+    int shoulder = 90,
+    int elbow = 90,
+  }) async {
     try {
-      final uri = Uri.parse('http://$camIp/action?go=$action');
+      final uri = Uri.parse(
+        '$armServerUrl/set-servo?base=$base&shoulder=$shoulder&elbow=$elbow',
+      );
       final res = await _client.get(uri).timeout(const Duration(seconds: 2));
       return res.statusCode == 200;
     } catch (_) {

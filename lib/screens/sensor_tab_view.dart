@@ -34,7 +34,6 @@ class _SensorTabViewState extends State<SensorTabView> {
       soilMoisture: (widget.sensorData.soilMoisture + (5 - (DateTime.now().second % 10))).clamp(20, 100),
       temperature: (widget.sensorData.temperature + (1 - (DateTime.now().second % 3))).clamp(18, 40),
       airHumidity: (widget.sensorData.airHumidity + (2 - (DateTime.now().second % 5))).clamp(30, 100),
-      batteryLevel: (widget.sensorData.batteryLevel + (2 - (DateTime.now().second % 4))).clamp(0, 100),
       leafDistance: (widget.sensorData.leafDistance + (3 - (DateTime.now().second % 5))).clamp(5, 80),
       timestamp: 'Baru saja',
     );
@@ -51,6 +50,18 @@ class _SensorTabViewState extends State<SensorTabView> {
     final nextState = !widget.actuatorState.pesticideActive;
     widget.onUpdateActuators(widget.actuatorState.copyWith(pesticideActive: nextState));
     EspService.instance.toggleActuator('pesticide', nextState);
+  }
+
+  void _toggleLaser() {
+    final nextState = !widget.actuatorState.laserActive;
+    widget.onUpdateActuators(widget.actuatorState.copyWith(laserActive: nextState));
+    EspService.instance.toggleActuator('laser', nextState);
+  }
+
+  void _toggleLed() {
+    final nextState = !widget.actuatorState.ledActive;
+    widget.onUpdateActuators(widget.actuatorState.copyWith(ledActive: nextState));
+    EspService.instance.toggleActuator('led', nextState);
   }
 
   @override
@@ -167,12 +178,51 @@ class _SensorTabViewState extends State<SensorTabView> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    // Laser Penunjuk
+                    Expanded(
+                      child: _ActuatorTile(
+                        title: 'Laser Penunjuk',
+                        status: widget.actuatorState.laserActive ? 'ON (Menyala)' : 'Off',
+                        isActive: widget.actuatorState.laserActive,
+                        activeColor: const Color(0xFFD32F2F),
+                        onToggle: _toggleLaser,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Lampu LED
+                    Expanded(
+                      child: _ActuatorTile(
+                        title: 'Lampu LED',
+                        status: widget.actuatorState.ledActive ? 'ON (Menyala)' : 'Off',
+                        isActive: widget.actuatorState.ledActive,
+                        activeColor: const Color(0xFFFFB300),
+                        onToggle: _toggleLed,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded, size: 14, color: AppColors.outline),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Laser (GPIO 15) & Lampu LED (GPIO 32) aktif pada code.ino. Pompa Irigasi & Pestisida tersedia untuk firmware berikutnya.',
+                        style: TextStyle(fontSize: 10, color: AppColors.outline, height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          // Sensor Metrics Grid (2 baris)
+          // Sensor Metrics Grid (2x2)
           Row(
             children: [
               // Kelembapan Tanah
@@ -184,7 +234,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                   value: '${widget.sensorData.soilMoisture.round()}%',
                   progress: widget.sensorData.soilMoisture / 100,
                   progressColor: const Color(0xFF0288D1),
-                  status: 'Kondisi Ideal',
+                  status: 'GPIO 34 • Kalibrasi 3200/1500',
                 ),
               ),
               const SizedBox(width: 8),
@@ -197,10 +247,14 @@ class _SensorTabViewState extends State<SensorTabView> {
                   value: '${widget.sensorData.temperature.round()}°C',
                   progress: widget.sensorData.temperature / 40,
                   progressColor: const Color(0xFFF57C00),
-                  status: 'Ideal 22-30°C',
+                  status: 'DHT11/22 • GPIO 4',
                 ),
               ),
-              const SizedBox(width: 8),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
               // Kelembapan Udara
               Expanded(
                 child: _SensorMetricTile(
@@ -210,28 +264,11 @@ class _SensorTabViewState extends State<SensorTabView> {
                   value: '${widget.sensorData.airHumidity.round()}%',
                   progress: widget.sensorData.airHumidity / 100,
                   progressColor: const Color(0xFF00796B),
-                  status: 'Kondisi Normal',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              // Kapasitas Baterai
-              Expanded(
-                child: _SensorMetricTile(
-                  icon: Icons.battery_charging_full_rounded,
-                  iconColor: const Color(0xFF388E3C),
-                  label: 'Baterai ESP32',
-                  value: '${widget.sensorData.batteryLevel.round()}%',
-                  progress: widget.sensorData.batteryLevel / 100,
-                  progressColor: const Color(0xFF388E3C),
-                  status: 'Baterai Tersisa',
+                  status: 'DHT11/22 • GPIO 4',
                 ),
               ),
               const SizedBox(width: 8),
-              // Jarak Daun ke ESP-CAM
+              // Jarak Daun (Ultrasonik)
               Expanded(
                 child: _SensorMetricTile(
                   icon: Icons.straighten_rounded,
@@ -240,7 +277,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                   value: '${widget.sensorData.leafDistance.round()} cm',
                   progress: widget.sensorData.leafDistance / 100,
                   progressColor: const Color(0xFF7C3AED),
-                  status: 'Sensor Ultrasonik',
+                  status: 'HC-SR04 • TRIG 5 / ECHO 18',
                 ),
               ),
             ],
@@ -366,7 +403,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              'IP: ${EspService.instance.camIp} • Live Stream, Servo & Ultrasonik Jarak Daun',
+                              'IP: ${EspService.instance.camIp} • Live Stream, Relai UART2 & Hasil AI',
                               style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontSize: 11),
                             ),
@@ -411,7 +448,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              'IP: ${EspService.instance.sensorIp} • Soil, DHT22, Baterai & Relai',
+                              'IP: ${EspService.instance.sensorIp} • DHT11/22, HC-SR04, Soil & Dual OLED',
                               style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontSize: 11),
                             ),
