@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/esp_service.dart';
 import '../theme/app_theme.dart';
 
-/// Dialog sederhana untuk mengisi alamat IP perangkat IoT kebun (ESP32)
-/// dan alamat server aplikasi. Dirancang ramah petani: cukup isi 3 alamat IP.
+/// Dialog sederhana untuk menghubungkan aplikasi ke ESP32-CAM.
+/// Server IP sudah di-hardcode di EspService (satu jaringan WiFi yang sama).
 class EspConfigDialog extends StatefulWidget {
   const EspConfigDialog({super.key});
 
@@ -19,31 +19,22 @@ class EspConfigDialog extends StatefulWidget {
 }
 
 class _EspConfigDialogState extends State<EspConfigDialog> {
-  late TextEditingController _node1IpController;
-  late TextEditingController _node2IpController;
-  late TextEditingController _serverIpController;
+  late TextEditingController _camIpController;
 
   @override
   void initState() {
     super.initState();
-    _node1IpController = TextEditingController(text: EspService.instance.camIp);
-    _node2IpController = TextEditingController(text: EspService.instance.sensorIp);
-    _serverIpController =
-        TextEditingController(text: EspService.instance.serverIp);
+    _camIpController = TextEditingController(text: EspService.instance.camIp);
   }
 
   @override
   void dispose() {
-    _node1IpController.dispose();
-    _node2IpController.dispose();
-    _serverIpController.dispose();
+    _camIpController.dispose();
     super.dispose();
   }
 
   void _save() {
-    EspService.instance.camIp = _node1IpController.text.trim();
-    EspService.instance.sensorIp = _node2IpController.text.trim();
-    EspService.instance.serverIp = _serverIpController.text.trim();
+    EspService.instance.camIp = _camIpController.text.trim();
     EspService.instance.isServerConfigured = true;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -52,7 +43,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
           children: [
             const Icon(Icons.check_circle_rounded, color: Color(0xFF34D399), size: 18),
             const SizedBox(width: 8),
-            const Expanded(child: Text('Alamat perangkat IoT berhasil disimpan!')),
+            const Expanded(child: Text('ESP32-CAM berhasil dihubungkan!')),
           ],
         ),
         backgroundColor: AppColors.primary,
@@ -70,7 +61,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
       backgroundColor: AppColors.surfaceContainerLowest,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 640),
+        constraints: const BoxConstraints(maxWidth: 520),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -103,13 +94,13 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hubungkan Perangkat IoT Kebun',
+                          'Hubungkan ke ESP32-CAM',
                           style: AppTextStyles.labelLg(color: Colors.white)
                               .copyWith(fontWeight: FontWeight.w800),
                         ),
-                        Text(
-                          'Isi alamat IP sesuai perangkat di kebun Anda',
-                          style: const TextStyle(color: Color(0xFFB3D9FF), fontSize: 10),
+                        const Text(
+                          'Cukup masukkan IP kamera, server otomatis',
+                          style: TextStyle(color: Color(0xFFB3D9FF), fontSize: 10),
                         ),
                       ],
                     ),
@@ -129,7 +120,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Petunjuk singkat
+                    // Alur data
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -137,102 +128,121 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: const Color(0xFFBFDBFE)),
                       ),
-                      child: Row(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 18),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Angka IP biasanya terlihat di layar ponsel, kartu petunjuk dari teknisi, atau tampilan Serial Monitor di komputer. Jika tidak tahu, tanyakan kepada teknisi atau lihat panduan di menu Beranda.',
-                              style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant)
-                                  .copyWith(fontSize: 11, height: 1.4),
-                            ),
+                          Row(
+                            children: [
+                              const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Cara Kerja',
+                                style: AppTextStyles.labelLg(color: AppColors.primary)
+                                    .copyWith(fontWeight: FontWeight.w800, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '1. HP & ESP32-CAM harus di WiFi yang sama\n'
+                            '2. Sensor tanah/suhu kirim data ke ESP32-CAM lewat kabel UART\n'
+                            '3. ESP32-CAM teruskan data ke server untuk disimpan\n'
+                            '4. Anda bisa lihat semua data dari mana saja di aplikasi ini',
+                            style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant)
+                                .copyWith(fontSize: 11, height: 1.6),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Daftar alamat IP
+                    // Server info (read-only)
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.wifi_rounded, size: 15, color: AppColors.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Alamat IP Perangkat Kebun Anda',
-                                style: AppTextStyles.labelLg(color: AppColors.onSurface)
-                                    .copyWith(fontWeight: FontWeight.w800),
-                              ),
-                            ],
+                          const Icon(Icons.dns_rounded, size: 18, color: AppColors.onSurfaceVariant),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Server Aplikasi',
+                                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                                      .copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                Text(
+                                  EspService.instance.serverIp,
+                                  style: const TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF334155),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          _ipField(
-                            label: 'Kamera (Node 1)',
-                            helper: 'ESP32-CAM untuk melihat tanaman',
-                            controller: _node1IpController,
-                            icon: Icons.videocam_rounded,
-                          ),
-                          const SizedBox(height: 12),
-                          _ipField(
-                            label: 'Sensor (Node 2)',
-                            helper: 'ESP32 sensor tanah & suhu',
-                            controller: _node2IpController,
-                            icon: Icons.sensors_rounded,
-                          ),
-                          const SizedBox(height: 12),
-                          _ipField(
-                            label: 'Server Aplikasi',
-                            helper: 'Komputer tempat data tersimpan',
-                            controller: _serverIpController,
-                            icon: Icons.dns_rounded,
-                          ),
+                          const Icon(Icons.lock_outline_rounded, size: 14, color: Color(0xFF94A3B8)),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Input ESP-CAM IP
+                    Text(
+                      'IP ESP32-CAM (Kamera)',
+                      style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                          .copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    TextField(
+                      controller: _camIpController,
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w700),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: 'Contoh: 192.168.1.50',
+                        helperText: 'Lihat IP di Serial Monitor Arduino atau layar OLED',
+                        prefixIcon: const Icon(Icons.videocam_rounded, size: 18),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     // Tombol Simpan
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF1F5F9),
-                              foregroundColor: AppColors.onSurfaceVariant,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              side: BorderSide.none,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: const Text('Batal'),
-                          ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _save,
+                        icon: const Icon(Icons.check_rounded, size: 16),
+                        label: const Text('Hubungkan'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _save,
-                            icon: const Icon(Icons.check_rounded, size: 16),
-                            label: const Text('Simpan'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: AppColors.onPrimary,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -241,50 +251,6 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _ipField({
-    required String label,
-    required String helper,
-    required TextEditingController controller,
-    required IconData icon,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-              .copyWith(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          style: const TextStyle(fontFamily: 'monospace', fontSize: 12, fontWeight: FontWeight.w700),
-          decoration: InputDecoration(
-            isDense: true,
-            hintText: 'Contoh: 192.168.1.20',
-            helperText: helper,
-            prefixIcon: Icon(icon, size: 18),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

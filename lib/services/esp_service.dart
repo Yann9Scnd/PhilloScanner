@@ -5,15 +5,23 @@ class EspService {
 
   EspService._internal();
 
-  String camIp = '192.168.4.1';
-  String sensorIp = '192.168.4.2';
+  // ══════════════════════════════════════════════════════════════
+  //  KONFIGURASI IP — GANTI DI SINI sesuai jaringan WiFi kamu
+  // ══════════════════════════════════════════════════════════════
 
-  /// IP komputer yang menjalankan server Laravel LeafGuard
-  /// (tempat histori scan & telemetri ESP32 disimpan ke database)
-  String serverIp = '192.168.1.100';
+  /// IP ESP32-CAM di jaringan WiFi (diatur lewat dialog).
+  String camIp = '192.168.1.50';
 
-  /// Menjadi true setelah user menyimpan konfigurasi di EspConfigDialog,
-  /// sehingga ApiClient otomatis memakai serverIp untuk koneksi API.
+  /// IP server Laravel & FastAPI. Ganti sesuai IP PC/komputer kamu.
+  /// Cek dengan: ipconfig (Windows) atau ifconfig (Mac/Linux).
+  /// Untuk testing lokal, semua harus satu jaringan WiFi yang sama.
+  static const String _serverIp = '192.168.1.100';
+
+  // ══════════════════════════════════════════════════════════════
+
+  String get serverIp => _serverIp;
+
+  /// Menjadi true setelah user menyimpan konfigurasi di EspConfigDialog.
   bool isServerConfigured = false;
 
   final http.Client _client = http.Client();
@@ -21,15 +29,14 @@ class EspService {
   String get streamUrl => 'http://$camIp:81/stream';
   String get captureUrl => 'http://$camIp/capture';
 
-  /// Base URL API LeafGuard (Laravel)
-  String get apiBaseUrl => 'http://$serverIp:8000/api';
+  /// Base URL API LeafGuard (Laravel) — berjalan di PC yang sama.
+  String get apiBaseUrl => 'http://$_serverIp:8000/api';
 
-  /// Server kamera/robot arm (FastAPI app.py). Dipakai endpoint /set-servo
-  /// untuk menggerakkan servo lengan (Base, Shoulder, Elbow).
-  String get armServerUrl => 'http://$serverIp:8000';
+  /// Server kamera/robot arm (FastAPI app.py).
+  /// Endpoint /set-servo untuk menggerakkan servo lengan (Base/Shoulder/Elbow).
+  String get armServerUrl => 'http://$_serverIp:8000';
 
-  /// Kirim posisi 3 servo lengan robot (Base/Shoulder/Elbow) ke FastAPI
-  /// `/set-servo`, sama seperti slider pada index.html.
+  /// Kirim posisi 3 servo lengan robot (Base/Shoulder/Elbow) ke FastAPI.
   Future<bool> setArmServo({
     int base = 90,
     int shoulder = 90,
@@ -46,10 +53,12 @@ class EspService {
     }
   }
 
-  /// Kirim perintah toggle aktuator ke Node 2 (ESP32 Sensor)
+  /// Toggle aktuator via ESP32-CAM (UART relay ke ESP32 sensor).
+  /// Catatan: firmware ESP32-CAM belum memproses endpoint ini.
+  /// Saat ini hanya update status UI lokal.
   Future<bool> toggleActuator(String actuator, bool state) async {
     try {
-      final uri = Uri.parse('http://$sensorIp/actuator?$actuator=${state ? 1 : 0}');
+      final uri = Uri.parse('http://$camIp/actuator?$actuator=${state ? 1 : 0}');
       final res = await _client.get(uri).timeout(const Duration(seconds: 2));
       return res.statusCode == 200;
     } catch (_) {
