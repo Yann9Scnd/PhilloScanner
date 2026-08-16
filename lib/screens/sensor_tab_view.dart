@@ -400,12 +400,12 @@ class _SensorTabViewState extends State<SensorTabView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Node 1: ESP32-CAM (Bedeng Barat)',
+                              'Node 1: ESP32 Sensor (Bedeng)',
                               style: AppTextStyles.labelLg(color: AppColors.onSurface)
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              'IP: ${EspService.instance.camIp} • Live Stream, Relai UART2 & Hasil AI',
+                              'IP: ${EspService.instance.espIp} • DHT, Soil, Ultrasonik',
                               style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontSize: 11),
                             ),
@@ -445,12 +445,12 @@ class _SensorTabViewState extends State<SensorTabView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Node 2: ESP32 Sensor (Bedeng Timur)',
-                              style: AppTextStyles.labelLg(color: AppColors.onSurface)
+                              'Node 2: ESP32-CAM (menyusul)',
+                              style: AppTextStyles.labelLg(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
                             Text(
-                              'IP: ${EspService.instance.camIp} • DHT11/22, HC-SR04, Soil via UART ke ESP32-CAM',
+                              'ESP32-CAM belum terpasang. Akan aktif saat ditambahkan.',
                               style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontSize: 11),
                             ),

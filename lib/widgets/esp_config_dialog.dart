@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/esp_service.dart';
 import '../theme/app_theme.dart';
 
-/// Dialog sederhana untuk menghubungkan aplikasi ke ESP32-CAM.
+/// Dialog konfigurasi koneksi ke ESP32 sensor node.
 /// Server IP sudah di-hardcode di EspService (satu jaringan WiFi yang sama).
 class EspConfigDialog extends StatefulWidget {
   const EspConfigDialog({super.key});
@@ -19,22 +19,22 @@ class EspConfigDialog extends StatefulWidget {
 }
 
 class _EspConfigDialogState extends State<EspConfigDialog> {
-  late TextEditingController _camIpController;
+  late TextEditingController _espIpController;
 
   @override
   void initState() {
     super.initState();
-    _camIpController = TextEditingController(text: EspService.instance.camIp);
+    _espIpController = TextEditingController(text: EspService.instance.espIp);
   }
 
   @override
   void dispose() {
-    _camIpController.dispose();
+    _espIpController.dispose();
     super.dispose();
   }
 
   void _save() {
-    EspService.instance.camIp = _camIpController.text.trim();
+    EspService.instance.espIp = _espIpController.text.trim();
     EspService.instance.isServerConfigured = true;
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -43,7 +43,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
           children: [
             const Icon(Icons.check_circle_rounded, color: Color(0xFF34D399), size: 18),
             const SizedBox(width: 8),
-            const Expanded(child: Text('ESP32-CAM berhasil dihubungkan!')),
+            const Expanded(child: Text('ESP32 berhasil dihubungkan!')),
           ],
         ),
         backgroundColor: AppColors.primary,
@@ -65,7 +65,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Modal Header
+            // Header
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
@@ -94,12 +94,12 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Hubungkan ke ESP32-CAM',
+                          'Hubungkan ke ESP32',
                           style: AppTextStyles.labelLg(color: Colors.white)
                               .copyWith(fontWeight: FontWeight.w800),
                         ),
                         const Text(
-                          'Cukup masukkan IP kamera, server otomatis',
+                          'Cukup masukkan IP ESP32, server otomatis',
                           style: TextStyle(color: Color(0xFFB3D9FF), fontSize: 10),
                         ),
                       ],
@@ -113,7 +113,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
               ),
             ),
 
-            // Modal Body
+            // Body
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -144,10 +144,10 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '1. HP & ESP32-CAM harus di WiFi yang sama\n'
-                            '2. Sensor tanah/suhu kirim data ke ESP32-CAM lewat kabel UART\n'
-                            '3. ESP32-CAM teruskan data ke server untuk disimpan\n'
-                            '4. Anda bisa lihat semua data dari mana saja di aplikasi ini',
+                            '1. HP & ESP32 harus di WiFi yang sama\n'
+                            '2. ESP32 baca sensor (DHT, Tanah, Ultrasonik)\n'
+                            '3. ESP32 kirim data ke server via HTTP POST\n'
+                            '4. Anda lihat semua data dari aplikasi ini',
                             style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant)
                                 .copyWith(fontSize: 11, height: 1.6),
                           ),
@@ -195,21 +195,21 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Input ESP-CAM IP
+                    // Input ESP32 IP
                     Text(
-                      'IP ESP32-CAM (Kamera)',
+                      'IP ESP32 (Sensor Node)',
                       style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                           .copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 4),
                     TextField(
-                      controller: _camIpController,
+                      controller: _espIpController,
                       style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.w700),
                       decoration: InputDecoration(
                         isDense: true,
                         hintText: 'Contoh: 192.168.1.50',
-                        helperText: 'Lihat IP di Serial Monitor Arduino atau layar OLED',
-                        prefixIcon: const Icon(Icons.videocam_rounded, size: 18),
+                        helperText: 'IP ESP32 di jaringan WiFi (lihat di Serial Monitor)',
+                        prefixIcon: const Icon(Icons.sensors_rounded, size: 18),
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -229,7 +229,7 @@ class _EspConfigDialogState extends State<EspConfigDialog> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Tombol Simpan
+                    // Tombol
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(

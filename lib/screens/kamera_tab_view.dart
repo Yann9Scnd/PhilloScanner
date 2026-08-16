@@ -23,7 +23,7 @@ class _KameraTabViewState extends State<KameraTabView> {
   bool _isCapturing = false;
   bool _isAnalyzing = false;
   String _streamResolution = 'SVGA (800x600)';
-  String _ipAddress = EspService.instance.camIp;
+  String _ipAddress = EspService.instance.espIp;
 
   static const Map<String, String> _streamImages = {
     'center': 'https://images.unsplash.com/photo-1592417817098-8f3d6eb23659?auto=format&fit=crop&w=800&q=80',
@@ -627,7 +627,7 @@ class _KameraTabViewState extends State<KameraTabView> {
                   ),
                   onChanged: (value) {
                     _ipAddress = value.trim();
-                    _espService.camIp = value.trim();
+                    _espService.espIp = value.trim();
                   },
                 ),
                 const SizedBox(height: 12),
