@@ -82,18 +82,20 @@ class _SensorTabViewState extends State<SensorTabView> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Telemetri & Kontrol IoT',
-                    style: AppTextStyles.headlineSm(color: AppColors.onSurface),
-                  ),
-                  Text(
-                    'Monitoring Sensor Real-time & Sakelar Aktuator',
-                    style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
-                  ),
-                ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Telemetri & Kontrol IoT',
+                      style: AppTextStyles.headlineSm(color: AppColors.onSurface),
+                    ),
+                    Text(
+                      'Monitoring Sensor Real-time & Sakelar Aktuator',
+                      style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
               ),
               InkWell(
                 onTap: _refreshData,
