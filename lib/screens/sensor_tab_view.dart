@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/actuator_state_model.dart';
 import '../models/sensor_data_model.dart';
+import '../services/api_client.dart';
 import '../services/esp_service.dart';
 import '../theme/app_theme.dart';
 
@@ -23,21 +25,50 @@ class SensorTabView extends StatefulWidget {
 }
 
 class _SensorTabViewState extends State<SensorTabView> {
-  String _selectedMetric = 'soil'; // 'soil', 'temp', 'humidity'
+  String _selectedMetric = 'soil';
+  bool _isLoading = false;
+  String? _lastError;
+  Timer? _autoRefreshTimer;
 
   final List<double> _soilTrend = [52, 54, 50, 48, 65, 62, 60, 62];
   final List<double> _tempTrend = [22, 23, 25, 29, 31, 28, 27, 28];
   final List<double> _humidityTrend = [80, 78, 75, 70, 68, 72, 76, 74];
 
-  void _refreshData() {
-    final newData = widget.sensorData.copyWith(
-      soilMoisture: (widget.sensorData.soilMoisture + (5 - (DateTime.now().second % 10))).clamp(20, 100),
-      temperature: (widget.sensorData.temperature + (1 - (DateTime.now().second % 3))).clamp(18, 40),
-      airHumidity: (widget.sensorData.airHumidity + (2 - (DateTime.now().second % 5))).clamp(30, 100),
-      leafDistance: (widget.sensorData.leafDistance + (3 - (DateTime.now().second % 5))).clamp(5, 80),
-      timestamp: 'Baru saja',
-    );
-    widget.onUpdateSensors(newData);
+  @override
+  void initState() {
+    super.initState();
+    _fetchFromApi();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchFromApi());
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchFromApi() async {
+    if (!mounted) return;
+    setState(() { _isLoading = true; _lastError = null; });
+
+    try {
+      final reading = await ApiClient().fetchLatestSensorReading();
+      if (!mounted) return;
+
+      if (reading != null) {
+        widget.onUpdateSensors(reading);
+        setState(() { _isLoading = false; _lastError = null; });
+      } else {
+        // Tidak ada data di server, tetap pakai data lokal
+        setState(() { _isLoading = false; _lastError = null; });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _lastError = 'Gagal mengambil data dari server';
+      });
+    }
   }
 
   void _togglePump() {
@@ -98,26 +129,49 @@ class _SensorTabViewState extends State<SensorTabView> {
                 ),
               ),
               InkWell(
-                onTap: _refreshData,
+                onTap: _fetchFromApi,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
+                    color: _lastError != null
+                        ? const Color(0xFFFEF2F2)
+                        : AppColors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: _lastError != null
+                          ? const Color(0xFFFECACA)
+                          : AppColors.outlineVariant.withValues(alpha: 0.3),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.refresh_rounded, size: 16, color: AppColors.primary),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Refresh',
-                        style: AppTextStyles.labelMd(color: AppColors.primary)
-                            .copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 16, height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _lastError != null
+                                  ? Icons.cloud_off_rounded
+                                  : Icons.cloud_done_rounded,
+                              size: 16,
+                              color: _lastError != null
+                                  ? const Color(0xFFEF4444)
+                                  : const Color(0xFF22C55E),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              _lastError != null ? 'Offline' : 'Live',
+                              style: AppTextStyles.labelMd(
+                                color: _lastError != null
+                                    ? const Color(0xFFEF4444)
+                                    : const Color(0xFF22C55E),
+                              ).copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
                 ),
               ),
             ],

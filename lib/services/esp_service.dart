@@ -15,7 +15,7 @@ class EspService {
   /// IP server Laravel & FastAPI. Ganti sesuai IP PC/komputer kamu.
   /// Cek dengan: ipconfig (Windows) atau ifconfig (Mac/Linux).
   /// Untuk testing lokal, semua harus satu jaringan WiFi yang sama.
-  static const String _serverIp = '192.168.1.100';
+  static const String _serverIp = '192.168.43.182';
 
   // ══════════════════════════════════════════════════════════════
 
