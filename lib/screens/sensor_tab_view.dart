@@ -52,6 +52,7 @@ class _SensorTabViewState extends State<SensorTabView> {
     setState(() { _isLoading = true; _lastError = null; });
 
     try {
+      // Coba fetch dari Laravel API dulu
       final reading = await ApiClient().fetchLatestSensorReading();
       if (!mounted) return;
 
@@ -59,20 +60,48 @@ class _SensorTabViewState extends State<SensorTabView> {
         widget.onUpdateSensors(reading);
         setState(() { _isLoading = false; _lastError = null; });
       } else {
-        // Tidak ada data di server, tetap pakai data lokal
-        setState(() { _isLoading = false; _lastError = null; });
+        // Laravel tidak ada data, coba fetch langsung dari ESP32
+        await _fetchFromEsp();
       }
 
+      // Sync actuator state dari Laravel
       final actuators = await ApiClient().fetchActuatorState();
       if (!mounted) return;
       if (actuators != null) {
         widget.onUpdateActuators(actuators);
       }
     } catch (e) {
-      if (!mounted) return;
+      // Laravel offline, coba fetch langsung dari ESP32
+      await _fetchFromEsp();
+    }
+  }
+
+  Future<void> _fetchFromEsp() async {
+    if (!mounted) return;
+
+    final espData = await EspService.instance.fetchSensorFromEsp();
+    if (!mounted) return;
+
+    if (espData != null) {
+      final reading = SensorDataModel(
+        deviceId: 'Node 2: ESP32 Sensor',
+        soilMoisture: (espData['soil'] as num?)?.toDouble() ?? 0,
+        temperature: (espData['temperature'] as num?)?.toDouble() ?? 0,
+        airHumidity: (espData['humidity'] as num?)?.toDouble() ?? 0,
+        lightIntensity: 0,
+        waterTankLevel: 0,
+        soilPh: 0,
+        batteryLevel: 0,
+        leafDistance: (espData['distance'] as num?)?.toDouble() ?? 0,
+        pumpStatus: (espData['pump'] as bool?) ?? false ? 'Aktif' : 'Standby',
+        timestamp: 'Langsung dari ESP32',
+      );
+      widget.onUpdateSensors(reading);
+      setState(() { _isLoading = false; _lastError = null; });
+    } else {
       setState(() {
         _isLoading = false;
-        _lastError = 'Gagal mengambil data dari server';
+        _lastError = 'ESP32 & Server tidak terjangkau';
       });
     }
   }

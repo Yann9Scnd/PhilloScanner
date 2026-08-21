@@ -1,201 +1,391 @@
-/*
-  CHILIGUARD IOT - NODE SENSOR ESP32 DEVKIT
-  ==========================================
-  Firmware otoritatif: sama persis dengan `code.ino` di root repo.
-
-  Node sensor (UART-based, TANPA WiFi):
-    - DHT11/22   GPIO 4   -> Suhu Udara (°C) & Kelembapan Udara (%) [DHTTYPE bisa ganti DHT22]
-    - HC-SR04    TRIG 5 / ECHO 18 -> Jarak Daun (cm) [ultrasonik]
-    - Soil       GPIO 34  -> Kelembapan Tanah (%) [kalibrasi AIR_VALUE=3200 / WATER_VALUE=1500]
-    - Laser      GPIO 15  -> berkedip tiap 1 detik (non-blocking)
-    - LED        GPIO 32  -> selalu menyala
-    - Dual OLED  I2C bus 0 (SDA19/SCL23) & bus 1 (SDA21/SCL22), addr 0x3C
-      - OLED kiri : hasil diagnosa AI dari ESP32-CAM (penyakit,akurasi)
-      - OLED kanan: monitor sensor (jarak, suhu, kelembapan udara, tanah)
-
-  Alur komunikasi (UART2):
-    ESP32 Sensor (TX2=27/RX2=26) <-> ESP32-CAM:
-      - Sensor -> CAM: "temp,hum,dist,soil\n" tiap 500 ms (Serial2 115200)
-      - CAM    -> Sensor: "penyakit,akurasi\n" (ditampilkan di OLED kiri)
-
-  Board: ESP32 DevKit V1 | Arduino IDE (esp32 core)
-  Library: Adafruit SSD1306, Adafruit GFX, DHT sensor library
-*/
-
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <WiFi.h>
+#include <WebServer.h>
 #include <DHT.h>
 
-#define SCREEN_WIDTH 128
-#define SCREEN_HEIGHT 64
+// =====================================================
+// WIFI
+// =====================================================
 
-// Bus I2C Terpisah
-TwoWire I2C_Kiri  = TwoWire(0);
-TwoWire I2C_Kanan = TwoWire(1);
+const char* ssid = "biznet.id";
+const char* password = "123123123";
 
-#define OLED_ADDR 0x3C  
 
-Adafruit_SSD1306 displayLeft(SCREEN_WIDTH, SCREEN_HEIGHT, &I2C_Kiri, -1);
-Adafruit_SSD1306 displayRight(SCREEN_WIDTH, SCREEN_HEIGHT, &I2C_Kanan, -1);
+// =====================================================
+// PIN
+// =====================================================
 
-// Pin Definition Sensor
+#define DHTPIN 4
+#define DHTTYPE DHT11
+
+#define RELAY_PIN 26
+
 #define TRIG_PIN 5
 #define ECHO_PIN 18
-#define DHTPIN   4
-#define DHTTYPE  DHT11  // Ubah ke DHT22 jika Anda menggunakan modul DHT22
-#define SOIL_PIN 34     // Pin Analog ADC1_CH6 (Aman saat WiFi aktif)
 
-// Pin Definition Tambahan (Laser & LED)
-#define LASER_PIN         15  // Pin Signal Modul Laser 3 Kaki
-#define LED_ALWAYS_ON_PIN 32  // Pin LED yang selalu menyala
+#define SOIL_PIN 34
 
-// Kalibrasi Sensor Kelembaban Tanah (Nilai Mentah ADC)
-const int AIR_VALUE   = 3200; // Nilai ADC saat sensor kering di udara (0%)
-const int WATER_VALUE = 1500; // Nilai ADC saat sensor dicelupkan ke air (100%)
+
+// =====================================================
+// OBJECT
+// =====================================================
 
 DHT dht(DHTPIN, DHTTYPE);
 
-String penyakitAI = "Memuat...";
-String akurasiAI  = "0.00%";
+WebServer server(80);
 
-unsigned long lastSensorSend = 0;
 
-// Variabel Waktu & Status Laser Non-Blocking
-unsigned long lastLaserToggle = 0;
-bool laserState = LOW;
+// =====================================================
+// STATUS
+// =====================================================
 
-// Fungsi konversi pembacaan Analog Soil Moisture ke Persentase (0-100%)
-int readSoilMoisture() {
-  int rawAnalog = analogRead(SOIL_PIN);
-  int percentage = map(rawAnalog, AIR_VALUE, WATER_VALUE, 0, 100);
-  if (percentage > 100) percentage = 100;
-  if (percentage < 0) percentage = 0;
-  return percentage;
+bool pumpState = false;
+
+float temperature = 0;
+float humidity = 0;
+float distance = 0;
+
+int soilRaw = 0;
+int soilPercent = 0;
+
+unsigned long lastSensorRead = 0;
+
+const unsigned long SENSOR_INTERVAL = 3000;
+
+
+// =====================================================
+// RELAY
+// =====================================================
+
+// Untuk relay ACTIVE HIGH
+void pumpON() {
+
+  digitalWrite(RELAY_PIN, HIGH);
+
+  pumpState = true;
+
+  Serial.println("POMPA -> ON");
 }
 
-void setup() {
-  // Serial Debugging
-  Serial.begin(115200);
-  
-  // Serial2 Hardware UART (RX2 = Pin 26, TX2 = Pin 27)
-  Serial2.begin(115200, SERIAL_8N1, 26, 27);
 
-  // Perbaikan Pin I2C_Kiri: GPIO 19 (SDA) & GPIO 23 (SCL)
-  I2C_Kiri.begin(19, 23, 100000);
-  I2C_Kanan.begin(21, 22, 100000);
-  delay(300);
+void pumpOFF() {
+
+  digitalWrite(RELAY_PIN, LOW);
+
+  pumpState = false;
+
+  Serial.println("POMPA -> OFF");
+}
+
+
+// =====================================================
+// BACA ULTRASONIC
+// =====================================================
+
+float readDistance() {
+
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(
+    ECHO_PIN,
+    HIGH,
+    30000
+  );
+
+  if (duration == 0) {
+    return 0;
+  }
+
+  return duration * 0.0343 / 2.0;
+}
+
+
+// =====================================================
+// BACA SENSOR
+// =====================================================
+
+void readSensors() {
+
+  float temp = dht.readTemperature();
+  float hum = dht.readHumidity();
+
+  if (!isnan(temp)) {
+    temperature = temp;
+  }
+
+  if (!isnan(hum)) {
+    humidity = hum;
+  }
+
+
+  // Ultrasonic
+
+  distance = readDistance();
+
+
+  // Soil
+
+  soilRaw = analogRead(SOIL_PIN);
+
+  soilPercent = map(
+    soilRaw,
+    3200,
+    1500,
+    0,
+    100
+  );
+
+  soilPercent = constrain(
+    soilPercent,
+    0,
+    100
+  );
+
+
+  // Serial monitor
+
+  Serial.println();
+  Serial.println("================================");
+
+  Serial.println("SENSOR UPDATE");
+
+  Serial.print("Temperature : ");
+  Serial.print(temperature);
+  Serial.println(" C");
+
+  Serial.print("Humidity    : ");
+  Serial.print(humidity);
+  Serial.println(" %");
+
+  Serial.print("Distance    : ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  Serial.print("Soil RAW    : ");
+  Serial.println(soilRaw);
+
+  Serial.print("Soil        : ");
+  Serial.print(soilPercent);
+  Serial.println(" %");
+
+  Serial.print("Pump        : ");
+  Serial.println(
+    pumpState ? "ON" : "OFF"
+  );
+
+  Serial.println("================================");
+}
+
+
+// =====================================================
+// GET /status
+// =====================================================
+
+void handleStatus() {
+
+  String json = "{";
+
+  json += "\"temperature\":" + String(temperature, 1) + ",";
+  json += "\"humidity\":" + String(humidity, 0) + ",";
+  json += "\"distance\":" + String(distance, 1) + ",";
+  json += "\"soilRaw\":" + String(soilRaw) + ",";
+  json += "\"soil\":" + String(soilPercent) + ",";
+  json += "\"pump\":" + String(
+    pumpState ? "true" : "false"
+  );
+
+  json += "}";
+
+  server.send(
+    200,
+    "application/json",
+    json
+  );
+}
+
+
+// =====================================================
+// GET /pump/on
+// =====================================================
+
+void handlePumpOn() {
+
+  pumpON();
+
+  server.send(
+    200,
+    "application/json",
+    "{\"success\":true,\"pump\":true}"
+  );
+}
+
+
+// =====================================================
+// GET /pump/off
+// =====================================================
+
+void handlePumpOff() {
+
+  pumpOFF();
+
+  server.send(
+    200,
+    "application/json",
+    "{\"success\":true,\"pump\":false}"
+  );
+}
+
+
+// =====================================================
+// GET /
+// =====================================================
+
+void handleRoot() {
+
+  String message = "";
+
+  message += "ESP32 SMART FARM";
+  message += "\n\n";
+  message += "Available endpoints:";
+  message += "\n";
+  message += "GET /status";
+  message += "\n";
+  message += "GET /pump/on";
+  message += "\n";
+  message += "GET /pump/off";
+
+  server.send(
+    200,
+    "text/plain",
+    message
+  );
+}
+
+
+// =====================================================
+// SETUP
+// =====================================================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  delay(1000);
+
+
+  // Sensor
 
   dht.begin();
+
+
+  // Ultrasonic
+
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
 
-  // Inisialisasi Pin Laser & LED
-  pinMode(LASER_PIN, OUTPUT);
-  pinMode(LED_ALWAYS_ON_PIN, OUTPUT);
-  
-  // Menyalakan LED secara permanen
-  digitalWrite(LED_ALWAYS_ON_PIN, HIGH);
+  digitalWrite(TRIG_PIN, LOW);
 
-  displayLeft.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
-  displayRight.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR);
+
+  // Relay
+
+  pinMode(RELAY_PIN, OUTPUT);
+
+  pumpOFF();
+
+
+  // WiFi
+
+  Serial.println();
+  Serial.println("================================");
+  Serial.println("ESP32 SMART FARM");
+  Serial.println("================================");
+
+  Serial.println("Menghubungkan WiFi...");
+
+  WiFi.begin(
+    ssid,
+    password
+  );
+
+
+  while (WiFi.status() != WL_CONNECTED) {
+
+    delay(500);
+
+    Serial.print(".");
+  }
+
+
+  Serial.println();
+  Serial.println("WiFi TERHUBUNG");
+
+  Serial.print("IP ESP32: ");
+  Serial.println(WiFi.localIP());
+
+
+  // Server routes
+
+  server.on(
+    "/",
+    HTTP_GET,
+    handleRoot
+  );
+
+  server.on(
+    "/status",
+    HTTP_GET,
+    handleStatus
+  );
+
+  server.on(
+    "/pump/on",
+    HTTP_GET,
+    handlePumpOn
+  );
+
+  server.on(
+    "/pump/off",
+    HTTP_GET,
+    handlePumpOff
+  );
+
+
+  server.begin();
+
+  Serial.println();
+  Serial.println("HTTP SERVER AKTIF");
+  Serial.println("Port: 80");
+
+  Serial.println();
+  Serial.println("Gunakan IP ESP32 di Flutter:");
+  Serial.println(WiFi.localIP());
+
+  Serial.println("================================");
 }
 
+
+// =====================================================
+// LOOP
+// =====================================================
+
 void loop() {
-  // 0. Logika Laser Berkedip Tiap 1 Detik (1000 ms) Non-Blocking
-  if (millis() - lastLaserToggle >= 1000) {
-    lastLaserToggle = millis();
-    laserState = !laserState;
-    digitalWrite(LASER_PIN, laserState);
+
+  server.handleClient();
+
+
+  // Sensor update setiap 3 detik
+
+  if (
+    millis() - lastSensorRead >= SENSOR_INTERVAL
+  ) {
+
+    lastSensorRead = millis();
+
+    readSensors();
   }
-
-  // 1. Terima Hasil AI dari ESP32-CAM via UART2
-  if (Serial2.available() > 0) {
-    String incomingData = Serial2.readStringUntil('\n');
-    incomingData.trim();
-    int commaIdx = incomingData.indexOf(',');
-    if (commaIdx > 0) {
-      penyakitAI = incomingData.substring(0, commaIdx);
-      akurasiAI  = incomingData.substring(commaIdx + 1);
-    }
-  }
-
-  // 2. Baca Sensor Ultrasonik HC-SR04
-  digitalWrite(TRIG_PIN, LOW);
-  delayMicroseconds(2);
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  
-  long duration = pulseIn(ECHO_PIN, HIGH, 20000); 
-  float jarakCm = (duration == 0) ? -1.0 : (duration * 0.034 / 2.0);
-
-  // 3. Baca DHT & Soil Moisture
-  float temp = dht.readTemperature();
-  float hum  = dht.readHumidity();
-  int soilPercent = readSoilMoisture();
-
-  // 4. Kirim Data Sensor ke ESP32-CAM via UART2 tiap 500 ms (Format: Suhu,Kelembaban,Jarak,Tanah)
-  if (millis() - lastSensorSend >= 500) {
-    lastSensorSend = millis();
-    String sensorMsg = String(isnan(temp) ? 0 : temp, 1) + "," + 
-                       String(isnan(hum) ? 0 : hum, 0) + "," + 
-                       String(jarakCm < 0 ? 0 : jarakCm, 1) + "," + 
-                       String(soilPercent) + "\n";
-    Serial2.print(sensorMsg);
-  }
-
-  // 5. Render OLED Kiri (Diagnosa AI)
-  displayLeft.clearDisplay();
-  displayLeft.fillRect(0, 0, 128, 14, SSD1306_WHITE);
-  displayLeft.setTextColor(SSD1306_BLACK);
-  displayLeft.setCursor(20, 3);
-  displayLeft.print(F("DIAGNOSA AI"));
-  
-  displayLeft.setTextColor(SSD1306_WHITE);
-  displayLeft.setCursor(0, 20);
-  displayLeft.print(F("Penyakit:"));
-  displayLeft.setCursor(0, 32);
-  displayLeft.println(penyakitAI);
-  displayLeft.setCursor(0, 50);
-  displayLeft.print(F("Akurasi : "));
-  displayLeft.println(akurasiAI);
-  displayLeft.display();
-
-  // 6. Render OLED Kanan (Sensor Monitor - 4 Data)
-  displayRight.clearDisplay();
-  displayRight.fillRect(0, 0, 128, 14, SSD1306_WHITE);
-  displayRight.setTextColor(SSD1306_BLACK);
-  displayRight.setCursor(15, 3);
-  displayRight.print(F("SENSOR MONITOR"));
-  
-  displayRight.setTextColor(SSD1306_WHITE);
-  
-  // Baris 1: Jarak Daun
-  displayRight.setCursor(0, 18);
-  displayRight.print(F("Jrk Daun : "));
-  if (jarakCm < 0) displayRight.println(F("Out Range"));
-  else { displayRight.print(jarakCm, 1); displayRight.println(F(" cm")); }
-  
-  // Baris 2: Suhu Udara
-  displayRight.setCursor(0, 30);
-  displayRight.print(F("Suhu Udh : "));
-  if (isnan(temp)) displayRight.println(F("Err"));
-  else { displayRight.print(temp, 1); displayRight.println(F(" C")); }
-
-  // Baris 3: Kelembaban Udara
-  displayRight.setCursor(0, 42);
-  displayRight.print(F("Kelem.Udh: "));
-  if (isnan(hum)) displayRight.println(F("Err"));
-  else { displayRight.print(hum, 0); displayRight.println(F(" %")); }
-
-  // Baris 4: Kelembaban Tanah
-  displayRight.setCursor(0, 54);
-  displayRight.print(F("Kelem.Tnh: "));
-  displayRight.print(soilPercent);
-  displayRight.println(F(" %"));
-
-  displayRight.display();
-
-  delay(50);
 }
