@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <HTTPClient.h>
 #include <DHT.h>
 
 // =====================================================
@@ -8,6 +9,13 @@
 
 const char* ssid = "biznet.id";
 const char* password = "123123123";
+
+
+// =====================================================
+// SERVER LARAVEL
+// =====================================================
+
+const char* laravelUrl = "http://192.168.43.182:8000/api/telemetry";
 
 
 // =====================================================
@@ -35,7 +43,7 @@ WebServer server(80);
 
 
 // =====================================================
-// STATUS
+// SENSOR STATUS
 // =====================================================
 
 bool pumpState = false;
@@ -47,33 +55,34 @@ float distance = 0;
 int soilRaw = 0;
 int soilPercent = 0;
 
+
+// =====================================================
+// TIMER
+// =====================================================
+
 unsigned long lastSensorRead = 0;
+unsigned long lastTelemetryPost = 0;
 
 const unsigned long SENSOR_INTERVAL = 3000;
+const unsigned long TELEMETRY_INTERVAL = 5000;
 
 
 // =====================================================
 // RELAY
 // =====================================================
 
-// Untuk relay ACTIVE HIGH
 void pumpON() {
-
   digitalWrite(RELAY_PIN, HIGH);
-
   pumpState = true;
-
-  Serial.println("POMPA -> ON");
+  Serial.println();
+  Serial.println(">>> POMPA ON");
 }
 
-
 void pumpOFF() {
-
   digitalWrite(RELAY_PIN, LOW);
-
   pumpState = false;
-
-  Serial.println("POMPA -> OFF");
+  Serial.println();
+  Serial.println(">>> POMPA OFF");
 }
 
 
@@ -82,20 +91,13 @@ void pumpOFF() {
 // =====================================================
 
 float readDistance() {
-
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
-
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
-
   digitalWrite(TRIG_PIN, LOW);
 
-  long duration = pulseIn(
-    ECHO_PIN,
-    HIGH,
-    30000
-  );
+  long duration = pulseIn(ECHO_PIN, HIGH, 30000);
 
   if (duration == 0) {
     return 0;
@@ -106,164 +108,145 @@ float readDistance() {
 
 
 // =====================================================
-// BACA SENSOR
+// BACA SEMUA SENSOR
 // =====================================================
 
 void readSensors() {
-
   float temp = dht.readTemperature();
   float hum = dht.readHumidity();
 
-  if (!isnan(temp)) {
-    temperature = temp;
-  }
-
-  if (!isnan(hum)) {
-    humidity = hum;
-  }
-
-
-  // Ultrasonic
+  if (!isnan(temp)) temperature = temp;
+  if (!isnan(hum)) humidity = hum;
 
   distance = readDistance();
 
-
-  // Soil
-
   soilRaw = analogRead(SOIL_PIN);
-
-  soilPercent = map(
-    soilRaw,
-    3200,
-    1500,
-    0,
-    100
-  );
-
-  soilPercent = constrain(
-    soilPercent,
-    0,
-    100
-  );
-
-
-  // Serial monitor
+  soilPercent = map(soilRaw, 3200, 1500, 0, 100);
+  soilPercent = constrain(soilPercent, 0, 100);
 
   Serial.println();
-  Serial.println("================================");
-
-  Serial.println("SENSOR UPDATE");
-
-  Serial.print("Temperature : ");
-  Serial.print(temperature);
-  Serial.println(" C");
-
-  Serial.print("Humidity    : ");
-  Serial.print(humidity);
-  Serial.println(" %");
-
-  Serial.print("Distance    : ");
-  Serial.print(distance);
-  Serial.println(" cm");
-
-  Serial.print("Soil RAW    : ");
-  Serial.println(soilRaw);
-
-  Serial.print("Soil        : ");
-  Serial.print(soilPercent);
-  Serial.println(" %");
-
-  Serial.print("Pump        : ");
-  Serial.println(
-    pumpState ? "ON" : "OFF"
-  );
-
-  Serial.println("================================");
+  Serial.println("========================================");
+  Serial.println("             SENSOR UPDATE");
+  Serial.println("========================================");
+  Serial.print("Temperature : "); Serial.print(temperature, 1); Serial.println(" C");
+  Serial.print("Humidity    : "); Serial.print(humidity, 0); Serial.println(" %");
+  Serial.print("Distance    : "); Serial.print(distance, 1); Serial.println(" cm");
+  Serial.print("Soil RAW    : "); Serial.println(soilRaw);
+  Serial.print("Soil        : "); Serial.print(soilPercent); Serial.println(" %");
+  Serial.print("Pump        : "); Serial.println(pumpState ? "ON" : "OFF");
+  Serial.println("========================================");
 }
 
 
 // =====================================================
-// GET /status
+// POST TELEMETRY KE LARAVEL
 // =====================================================
 
-void handleStatus() {
+void postTelemetry() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.begin(laravelUrl);
+  http.addHeader("Content-Type", "application/json");
 
   String json = "{";
+  json += "\"temp\":" + String(temperature, 1) + ",";
+  json += "\"hum\":" + String(humidity, 0) + ",";
+  json += "\"dist\":" + String(distance, 1) + ",";
+  json += "\"soil\":" + String(soilPercent) + ",";
+  json += "\"batt\":0";
+  json += "}";
 
+  int code = http.POST(json);
+
+  if (code > 0) {
+    Serial.println("[LARAVEL] Telemetry terkirim: " + String(code));
+  } else {
+    Serial.println("[LARAVEL] Gagal kirim: " + String(code));
+  }
+
+  http.end();
+}
+
+
+// =====================================================
+// HTTP HANDLERS
+// =====================================================
+
+void handleRoot() {
+  String message = "ESP32 SMART FARM\n";
+  message += "==============================\n";
+  message += "ESP32 ONLINE\n\n";
+  message += "Endpoints:\n";
+  message += "GET /status\n";
+  message += "GET /pump/on\n";
+  message += "GET /pump/off\n";
+  server.send(200, "text/plain", message);
+}
+
+void handleStatus() {
+  String json = "{";
   json += "\"temperature\":" + String(temperature, 1) + ",";
   json += "\"humidity\":" + String(humidity, 0) + ",";
   json += "\"distance\":" + String(distance, 1) + ",";
   json += "\"soilRaw\":" + String(soilRaw) + ",";
   json += "\"soil\":" + String(soilPercent) + ",";
-  json += "\"pump\":" + String(
-    pumpState ? "true" : "false"
-  );
-
+  json += "\"pump\":" + String(pumpState ? "true" : "false");
   json += "}";
-
-  server.send(
-    200,
-    "application/json",
-    json
-  );
+  server.send(200, "application/json", json);
 }
-
-
-// =====================================================
-// GET /pump/on
-// =====================================================
 
 void handlePumpOn() {
-
   pumpON();
-
-  server.send(
-    200,
-    "application/json",
-    "{\"success\":true,\"pump\":true}"
-  );
+  server.send(200, "application/json", "{\"success\":true,\"pump\":true}");
 }
-
-
-// =====================================================
-// GET /pump/off
-// =====================================================
 
 void handlePumpOff() {
-
   pumpOFF();
-
-  server.send(
-    200,
-    "application/json",
-    "{\"success\":true,\"pump\":false}"
-  );
+  server.send(200, "application/json", "{\"success\":true,\"pump\":false}");
 }
 
 
 // =====================================================
-// GET /
+// WIFI CONNECTION
 // =====================================================
 
-void handleRoot() {
+bool connectWiFi() {
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("             WIFI CONNECTION");
+  Serial.println("========================================");
+  Serial.print("SSID     : "); Serial.println(ssid);
+  Serial.println("Menghubungkan...");
 
-  String message = "";
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect(true);
+  delay(1000);
+  WiFi.begin(ssid, password);
 
-  message += "ESP32 SMART FARM";
-  message += "\n\n";
-  message += "Available endpoints:";
-  message += "\n";
-  message += "GET /status";
-  message += "\n";
-  message += "GET /pump/on";
-  message += "\n";
-  message += "GET /pump/off";
+  int attempt = 0;
+  while (WiFi.status() != WL_CONNECTED && attempt < 30) {
+    delay(500);
+    Serial.print(".");
+    attempt++;
+  }
 
-  server.send(
-    200,
-    "text/plain",
-    message
-  );
+  Serial.println();
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("WIFI TERHUBUNG!");
+    Serial.print("SSID      : "); Serial.println(WiFi.SSID());
+    Serial.print("IP ESP32  : "); Serial.println(WiFi.localIP());
+    Serial.print("Gateway   : "); Serial.println(WiFi.gatewayIP());
+    Serial.print("RSSI      : "); Serial.print(WiFi.RSSI()); Serial.println(" dBm");
+    Serial.println("========================================");
+    return true;
+  }
+
+  Serial.println("WIFI GAGAL TERHUBUNG!");
+  Serial.print("Status WiFi: "); Serial.println(WiFi.status());
+  Serial.println("========================================");
+  return false;
 }
 
 
@@ -272,100 +255,43 @@ void handleRoot() {
 // =====================================================
 
 void setup() {
-
   Serial.begin(115200);
-
   delay(1000);
 
-
-  // Sensor
+  Serial.println();
+  Serial.println("========================================");
+  Serial.println("          ESP32 SMART FARM");
+  Serial.println("========================================");
 
   dht.begin();
 
-
-  // Ultrasonic
-
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
-
   digitalWrite(TRIG_PIN, LOW);
 
-
-  // Relay
-
   pinMode(RELAY_PIN, OUTPUT);
-
   pumpOFF();
 
+  bool wifiConnected = connectWiFi();
 
-  // WiFi
-
-  Serial.println();
-  Serial.println("================================");
-  Serial.println("ESP32 SMART FARM");
-  Serial.println("================================");
-
-  Serial.println("Menghubungkan WiFi...");
-
-  WiFi.begin(
-    ssid,
-    password
-  );
-
-
-  while (WiFi.status() != WL_CONNECTED) {
-
-    delay(500);
-
-    Serial.print(".");
+  if (!wifiConnected) {
+    Serial.println("ESP32 TIDAK TERHUBUNG KE WIFI.");
+    return;
   }
 
-
-  Serial.println();
-  Serial.println("WiFi TERHUBUNG");
-
-  Serial.print("IP ESP32: ");
-  Serial.println(WiFi.localIP());
-
-
-  // Server routes
-
-  server.on(
-    "/",
-    HTTP_GET,
-    handleRoot
-  );
-
-  server.on(
-    "/status",
-    HTTP_GET,
-    handleStatus
-  );
-
-  server.on(
-    "/pump/on",
-    HTTP_GET,
-    handlePumpOn
-  );
-
-  server.on(
-    "/pump/off",
-    HTTP_GET,
-    handlePumpOff
-  );
-
-
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/status", HTTP_GET, handleStatus);
+  server.on("/pump/on", HTTP_GET, handlePumpOn);
+  server.on("/pump/off", HTTP_GET, handlePumpOff);
   server.begin();
 
   Serial.println();
-  Serial.println("HTTP SERVER AKTIF");
-  Serial.println("Port: 80");
-
-  Serial.println();
-  Serial.println("Gunakan IP ESP32 di Flutter:");
-  Serial.println(WiFi.localIP());
-
-  Serial.println("================================");
+  Serial.println("========================================");
+  Serial.println("        HTTP SERVER AKTIF");
+  Serial.println("========================================");
+  Serial.println("Port       : 80");
+  Serial.print("IP ESP32   : "); Serial.println(WiFi.localIP());
+  Serial.println("========================================");
 }
 
 
@@ -374,18 +300,18 @@ void setup() {
 // =====================================================
 
 void loop() {
+  if (WiFi.status() == WL_CONNECTED) {
+    server.handleClient();
+  }
 
-  server.handleClient();
-
-
-  // Sensor update setiap 3 detik
-
-  if (
-    millis() - lastSensorRead >= SENSOR_INTERVAL
-  ) {
-
+  if (millis() - lastSensorRead >= SENSOR_INTERVAL) {
     lastSensorRead = millis();
-
     readSensors();
+  }
+
+  if (millis() - lastTelemetryPost >= TELEMETRY_INTERVAL &&
+      WiFi.status() == WL_CONNECTED) {
+    lastTelemetryPost = millis();
+    postTelemetry();
   }
 }

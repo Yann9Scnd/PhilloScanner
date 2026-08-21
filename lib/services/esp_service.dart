@@ -11,7 +11,7 @@ class EspService {
   // ══════════════════════════════════════════════════════════════
 
   /// IP ESP32 di jaringan WiFi (diatur lewat dialog).
-  String espIp = '192.168.1.50';
+  String espIp = '192.168.43.44';
 
   /// IP server Laravel & FastAPI. Ganti sesuai IP PC/komputer kamu.
   static const String _serverIp = '192.168.43.182';

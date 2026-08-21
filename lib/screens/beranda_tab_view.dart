@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/activity_log_model.dart';
 import '../models/actuator_state_model.dart';
 import '../models/sensor_data_model.dart';
 import '../services/api_client.dart';
+import '../services/esp_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_guide_dialog.dart';
 import '../widgets/bmkg_weather_card.dart';
@@ -40,25 +42,60 @@ class _BerandaTabViewState extends State<BerandaTabView> {
     'Sektor B - Bedeng Timur',
   ];
 
+  Timer? _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
     _sensorData = widget.sensorData;
     _fetchDashboardData();
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _fetchDashboardData());
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchDashboardData() async {
     final client = ApiClient();
-    final results = await Future.wait([
-      client.fetchLatestSensorReading(),
-      client.fetchActuatorState(),
-      client.fetchTodayScanCount(),
-    ]);
-    if (!mounted) return;
+    SensorDataModel? reading;
+    ActuatorStateModel? actuators;
+    int scanCount = 0;
 
-    final reading = results[0] as SensorDataModel?;
-    final actuators = results[1] as ActuatorStateModel?;
-    final scanCount = results[2] as int;
+    try {
+      final results = await Future.wait([
+        client.fetchLatestSensorReading(),
+        client.fetchActuatorState(),
+        client.fetchTodayScanCount(),
+      ]);
+      reading = results[0] as SensorDataModel?;
+      actuators = results[1] as ActuatorStateModel?;
+      scanCount = results[2] as int;
+    } catch (_) {}
+
+    // Fallback: fetch sensor langsung dari ESP32 jika Laravel offline
+    if (reading == null) {
+      final espData = await EspService.instance.fetchSensorFromEsp();
+      if (espData != null) {
+        reading = SensorDataModel(
+          deviceId: 'Node 2: ESP32 Sensor',
+          soilMoisture: (espData['soil'] as num?)?.toDouble() ?? 0,
+          temperature: (espData['temperature'] as num?)?.toDouble() ?? 0,
+          airHumidity: (espData['humidity'] as num?)?.toDouble() ?? 0,
+          lightIntensity: 0,
+          waterTankLevel: 0,
+          soilPh: 0,
+          batteryLevel: 0,
+          leafDistance: (espData['distance'] as num?)?.toDouble() ?? 0,
+          pumpStatus: (espData['pump'] as bool?) ?? false ? 'Aktif' : 'Standby',
+          timestamp: 'Langsung dari ESP32',
+        );
+      }
+    }
+
+    if (!mounted) return;
 
     setState(() {
       if (reading != null) _sensorData = reading;
