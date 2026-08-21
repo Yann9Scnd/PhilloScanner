@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/activity_log_model.dart';
+import '../models/actuator_state_model.dart';
 import '../models/sensor_data_model.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_guide_dialog.dart';
 import '../widgets/bmkg_weather_card.dart';
@@ -26,12 +28,65 @@ class BerandaTabView extends StatefulWidget {
 
 class _BerandaTabViewState extends State<BerandaTabView> {
   String _selectedSector = 'Kebun Cabai Presisi (2 Node ESP32)';
+  bool _isOnline = false;
+  int _todayScanCount = 0;
+
+  SensorDataModel _sensorData = SensorDataModel.initial();
+  ActuatorStateModel _actuatorState = ActuatorStateModel.initial();
 
   final List<String> _sectors = [
     'Kebun Cabai Presisi (2 Node ESP32)',
     'Sektor A - Bedeng Barat',
     'Sektor B - Bedeng Timur',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _sensorData = widget.sensorData;
+    _fetchDashboardData();
+  }
+
+  Future<void> _fetchDashboardData() async {
+    final client = ApiClient();
+    final results = await Future.wait([
+      client.fetchLatestSensorReading(),
+      client.fetchActuatorState(),
+      client.fetchTodayScanCount(),
+    ]);
+    if (!mounted) return;
+
+    final reading = results[0] as SensorDataModel?;
+    final actuators = results[1] as ActuatorStateModel?;
+    final scanCount = results[2] as int;
+
+    setState(() {
+      if (reading != null) _sensorData = reading;
+      if (actuators != null) _actuatorState = actuators;
+      _todayScanCount = scanCount;
+      _isOnline = reading != null || actuators != null;
+    });
+  }
+
+  Widget _buildActuatorStatCard() {
+    final active = <String>[
+      if (_actuatorState.pumpActive) 'Pompa',
+      if (_actuatorState.pesticideActive) 'Pestisida',
+      if (_actuatorState.laserActive) 'Laser',
+      if (_actuatorState.ledActive) 'LED',
+    ];
+    final anyActive = active.isNotEmpty;
+
+    return QuickStatCard(
+      icon: Icons.power_settings_new_rounded,
+      iconBgColor: const Color(0x1A003B58),
+      iconColor: AppColors.primary,
+      label: 'Aktuator Aktif',
+      value: '${active.length}/4',
+      subtitle: anyActive ? active.join(' • ') : 'Semua standby',
+      subtitleColor: anyActive ? const Color(0xFF16A34A) : null,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,11 +126,25 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                     const SizedBox(height: 2),
                     Row(
                       children: [
-                        const Icon(Icons.cloud_done_rounded, size: 16, color: AppColors.primary),
+                        Icon(
+                          _isOnline
+                              ? Icons.cloud_done_rounded
+                              : Icons.cloud_off_rounded,
+                          size: 16,
+                          color: _isOnline
+                              ? AppColors.primary
+                              : AppColors.outline,
+                        ),
                         const SizedBox(width: 6),
                         Flexible(
-                          child: Text('Sistem Terhubung & Stabil',
-                              style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
+                          child: Text(
+                              _isOnline
+                                  ? 'Sistem Terhubung & Stabil'
+                                  : 'Menghubungkan ke server...',
+                              style: AppTextStyles.labelMd(
+                                  color: _isOnline
+                                      ? AppColors.onSurfaceVariant
+                                      : AppColors.outline),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                         ),
@@ -218,7 +287,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                   iconBgColor: const Color(0x1A003B58),
                   iconColor: AppColors.primary,
                   label: 'Kelembapan Tanah',
-                  value: '${widget.sensorData.soilMoisture.round()}%',
+                  value: '${_sensorData.soilMoisture.round()}%',
                   subtitle: 'Optimal',
                   subtitleColor: const Color(0xFF16A34A),
                 ),
@@ -230,10 +299,33 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                   iconBgColor: const Color(0x1A835500),
                   iconColor: AppColors.secondary,
                   label: 'Suhu Udara',
-                  value: '${widget.sensorData.temperature.round()}°C',
+                  value: '${_sensorData.temperature.round()}°C',
                   subtitle: 'Ideal 24-30°',
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Quick Stats Baris 2 (Scan Hari Ini & Status Aktuator dari API)
+          Row(
+            children: [
+              Expanded(
+                child: QuickStatCard(
+                  icon: Icons.document_scanner_rounded,
+                  iconBgColor: AppColors.error.withValues(alpha: 0.10),
+                  iconColor: AppColors.error,
+                  label: 'Scan Hari Ini',
+                  value: '$_todayScanCount',
+                  subtitle: _todayScanCount > 0
+                      ? 'Hasil deteksi AI'
+                      : 'Belum ada scan',
+                  subtitleColor:
+                      _todayScanCount > 0 ? const Color(0xFF16A34A) : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: _buildActuatorStatCard()),
             ],
           ),
           const SizedBox(height: 16),

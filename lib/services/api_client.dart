@@ -160,4 +160,30 @@ class ApiClient {
       return false;
     }
   }
+
+  /// GET /api/scans → jumlah scan hari ini (berdasarkan created_at)
+  Future<int> fetchTodayScanCount() async {
+    try {
+      final res = await _client.get(_uri('scans'));
+      if (res.statusCode != 200) return 0;
+      final list = _list(jsonDecode(res.body)) ?? [];
+      final now = DateTime.now();
+      var count = 0;
+      for (final e in list) {
+        final data = _data(e);
+        final createdAt =
+            DateTime.tryParse(data?['created_at']?.toString() ?? '');
+        if (createdAt == null) continue;
+        final local = createdAt.toLocal();
+        if (local.year == now.year &&
+            local.month == now.month &&
+            local.day == now.day) {
+          count++;
+        }
+      }
+      return count;
+    } catch (_) {
+      return 0;
+    }
+  }
 }
