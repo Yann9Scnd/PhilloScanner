@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../database/database_helper.dart';
 import '../models/activity_log_model.dart';
 import '../models/actuator_state_model.dart';
 import '../models/notification_model.dart';
@@ -27,11 +28,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
   final ScanRepository _scanRepository = ScanRepository();
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
   @override
   void initState() {
     super.initState();
     _fetchActuatorState();
+    _loadActivities();
+  }
+
+  /// Muat activity log tersimpan dari SQLite saat aplikasi dibuka.
+  Future<void> _loadActivities() async {
+    try {
+      final activities = await _dbHelper.getAllActivities();
+      if (!mounted || activities.isEmpty) return;
+      setState(() {
+        _activities = activities;
+      });
+    } catch (_) {
+      // SQLite gagal dibuka, tetap pakai data awal di memori.
+    }
   }
 
   /// Ambil status aktuator terakhir dari server Laravel saat aplikasi dibuka.
@@ -72,23 +88,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   /// Simpan hasil scan ke riwayat (memory + API Laravel + SQLite fallback)
   void _handleSaveScan(ScanResultModel scan) {
+    final newActivity = ActivityLogModel(
+      id: 'act-${DateTime.now().millisecondsSinceEpoch}',
+      title: 'Scan AI: ${scan.diseaseName}',
+      subtitle: 'Akurasi ${scan.confidence}% (${scan.severity})',
+      timestamp: 'Baru saja',
+      type: 'scan_alert',
+      sector: scan.sector,
+      iconName: 'scan',
+    );
     setState(() {
       _savedScans = [scan, ..._savedScans];
-      _activities = [
-        ActivityLogModel(
-          id: 'act-${DateTime.now().millisecondsSinceEpoch}',
-          title: 'Scan AI: ${scan.diseaseName}',
-          subtitle: 'Akurasi ${scan.confidence}% (${scan.severity})',
-          timestamp: 'Baru saja',
-          type: 'scan_alert',
-          sector: scan.sector,
-          iconName: 'scan',
-        ),
-        ..._activities,
-      ];
+      _activities = [newActivity, ..._activities];
     });
     // Sinkronkan ke server Laravel; jika offline simpan ke SQLite lokal.
     _scanRepository.addEspScanResult(scan).ignore();
+    _dbHelper.insertActivity(newActivity).ignore();
   }
 
   void _handleNewScan(ScanResultModel scan) {
@@ -102,9 +117,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _handleUpdateActuators(ActuatorStateModel newActuators) {
+    final prev = _actuatorState;
+    final changes = <String>[
+      if (prev.pumpActive != newActuators.pumpActive)
+        'Pompa Irigasi ${newActuators.pumpActive ? 'ON' : 'OFF'}',
+      if (prev.pesticideActive != newActuators.pesticideActive)
+        'Pompa Pestisida ${newActuators.pesticideActive ? 'ON' : 'OFF'}',
+      if (prev.laserActive != newActuators.laserActive)
+        'Laser Penunjuk ${newActuators.laserActive ? 'ON' : 'OFF'}',
+      if (prev.ledActive != newActuators.ledActive)
+        'Lampu LED ${newActuators.ledActive ? 'ON' : 'OFF'}',
+    ];
+
     setState(() {
       _actuatorState = newActuators;
     });
+
+    if (changes.isEmpty) return;
+
+    final now = DateTime.now();
+    final timestamp =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} WIB';
+    final activity = ActivityLogModel(
+      id: 'act-${now.millisecondsSinceEpoch}',
+      title: 'Aktuator Diperbarui',
+      subtitle: changes.join(' • '),
+      timestamp: timestamp,
+      type: 'system_info',
+      sector: 'Kebun Cabai',
+      iconName: 'power',
+    );
+    setState(() {
+      _activities = [activity, ..._activities];
+    });
+    _dbHelper.insertActivity(activity).ignore();
   }
 
   void _handleMarkAllNotificationsRead() {

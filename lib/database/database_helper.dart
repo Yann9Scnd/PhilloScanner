@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart'
 import 'package:path/path.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import '../models/activity_log_model.dart';
 import '../models/scan_result_model.dart';
 import '../models/sensor_data_model.dart';
 
@@ -32,7 +33,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -70,6 +71,20 @@ class DatabaseHelper {
             'sensor_readings',
             'leaf_distance TEXT NOT NULL DEFAULT \'25\'',
           );
+        }
+        if (oldVersion < 5) {
+          // Activity log riwayat (non-destructive: tabel baru)
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS activity_logs (
+              id TEXT PRIMARY KEY,
+              title TEXT NOT NULL,
+              subtitle TEXT NOT NULL,
+              timestamp TEXT NOT NULL,
+              type TEXT NOT NULL,
+              sector TEXT NOT NULL,
+              icon_name TEXT NOT NULL
+            )
+          ''');
         }
       },
     );
@@ -117,6 +132,19 @@ class DatabaseHelper {
         leaf_distance TEXT NOT NULL DEFAULT '25',
         pump_status TEXT NOT NULL DEFAULT 'Standby',
         timestamp TEXT NOT NULL DEFAULT ''
+      )
+    ''');
+
+    // 3. Activity Logs table (riwayat aktivitas)
+    await db.execute('''
+      CREATE TABLE activity_logs (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        subtitle TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        type TEXT NOT NULL,
+        sector TEXT NOT NULL,
+        icon_name TEXT NOT NULL
       )
     ''');
 
@@ -195,5 +223,16 @@ class DatabaseHelper {
     final result = await db.query('sensor_readings', orderBy: 'id DESC', limit: 1);
     if (result.isEmpty) return null;
     return SensorDataModel.fromMap(result.first);
+  }
+
+  Future<int> insertActivity(ActivityLogModel activity) async {
+    final db = await instance.database;
+    return await db.insert('activity_logs', activity.toMap());
+  }
+
+  Future<List<ActivityLogModel>> getAllActivities() async {
+    final db = await instance.database;
+    final result = await db.query('activity_logs', orderBy: 'rowid DESC');
+    return result.map((json) => ActivityLogModel.fromMap(json)).toList();
   }
 }
