@@ -8,7 +8,7 @@ import '../services/esp_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_guide_dialog.dart';
 import '../widgets/bmkg_weather_card.dart';
-import '../widgets/esp_config_dialog.dart';
+import '../widgets/esp_node_dialog.dart';
 import '../widgets/quick_stat_card.dart';
 import '../widgets/recent_activity_item.dart';
 
@@ -29,18 +29,11 @@ class BerandaTabView extends StatefulWidget {
 }
 
 class _BerandaTabViewState extends State<BerandaTabView> {
-  String _selectedSector = 'Kebun Cabai Presisi (2 Node ESP32)';
   bool _isOnline = false;
   int _todayScanCount = 0;
 
   SensorDataModel _sensorData = SensorDataModel.initial();
   ActuatorStateModel _actuatorState = ActuatorStateModel.initial();
-
-  final List<String> _sectors = [
-    'Kebun Cabai Presisi (2 Node ESP32)',
-    'Sektor A - Bedeng Barat',
-    'Sektor B - Bedeng Timur',
-  ];
 
   Timer? _autoRefreshTimer;
 
@@ -127,6 +120,9 @@ class _BerandaTabViewState extends State<BerandaTabView> {
 
   @override
   Widget build(BuildContext context) {
+    final nodes = EspService.instance.nodes;
+    final selectedNode = EspService.instance.selectedNode;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 32),
@@ -190,42 +186,12 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // Sector Switcher Dropdown
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.30)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedSector,
-                      isDense: true,
-                      isExpanded: true,
-                      icon: const Icon(Icons.keyboard_arrow_down, size: 18),
-                      style: AppTextStyles.labelMd(color: AppColors.onSurface)
-                          .copyWith(fontWeight: FontWeight.w600, fontSize: 11),
-                      items: _sectors.map((s) {
-                        return DropdownMenuItem<String>(
-                          value: s,
-                          child: Text(s, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => _selectedSector = val);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
             ],
           ),
+          const SizedBox(height: 14),
+
+          // ESP32 Node Chips
+          _buildNodeChips(nodes, selectedNode),
           const SizedBox(height: 16),
 
           // Hero Section: Greenhouse Banner
@@ -281,8 +247,10 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                             style: AppTextStyles.labelMd(color: AppColors.primaryFixedDim)
                                 .copyWith(letterSpacing: 1.2, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
-                        Text(_selectedSector,
-                            style: AppTextStyles.headlineSm(color: AppColors.onPrimary)),
+                        Text(
+                          selectedNode?.name ?? 'Belum ada ESP32',
+                          style: AppTextStyles.headlineSm(color: AppColors.onPrimary),
+                        ),
                         const SizedBox(height: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -293,15 +261,26 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.check_circle_rounded,
-                                  size: 16, color: AppColors.tertiaryFixed),
+                              Icon(
+                                _isOnline
+                                    ? Icons.check_circle_rounded
+                                    : Icons.help_outline_rounded,
+                                size: 16,
+                                color: _isOnline
+                                    ? AppColors.tertiaryFixed
+                                    : AppColors.tertiaryFixed,
+                              ),
                               const SizedBox(width: 4),
                               Flexible(
-                                child: Text('Kondisi Ideal (650 Tanaman Cabai)',
-                                    style: AppTextStyles.labelMd(color: AppColors.tertiaryFixed)
-                                        .copyWith(fontWeight: FontWeight.w500, fontSize: 11),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  _isOnline
+                                      ? '${nodes.length} Node Aktif'
+                                      : 'Menunggu koneksi...',
+                                  style: AppTextStyles.labelMd(color: AppColors.tertiaryFixed)
+                                      .copyWith(fontWeight: FontWeight.w500, fontSize: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -366,56 +345,6 @@ class _BerandaTabViewState extends State<BerandaTabView> {
             ],
           ),
           const SizedBox(height: 16),
-
-          // Hubungkan ESP32 Banner
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.primary,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.router_rounded, color: Colors.amberAccent, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hubungkan Modul ESP32',
-                        style: AppTextStyles.labelLg(color: Colors.white)
-                            .copyWith(fontWeight: FontWeight.w700),
-                      ),
-                      Text(
-                        'Input alamat IP perangkat IoT kebun',
-                        style: AppTextStyles.labelMd(color: Colors.white70).copyWith(fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () => EspConfigDialog.show(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.amberAccent,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Input IP', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
 
           // Panduan Penggunaan Banner
           Container(
@@ -529,6 +458,96 @@ class _BerandaTabViewState extends State<BerandaTabView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Horizontal scrollable list of ESP32 node chips + add button.
+  Widget _buildNodeChips(List<dynamic> nodes, dynamic selectedNode) {
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: nodes.length + 1, // +1 untuk tombol tambah
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (ctx, i) {
+          // Tombol tambah
+          if (i == nodes.length) {
+            return GestureDetector(
+              onTap: () => EspNodeDialog.show(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.40),
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
+                    SizedBox(width: 4),
+                    Text(
+                      'Tambah',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final node = nodes[i];
+          final isSelected = node.id == (selectedNode?.id ?? '');
+          return GestureDetector(
+            onTap: () {
+              EspService.instance.selectNode(node.id);
+              setState(() {});
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary
+                    : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primary
+                      : AppColors.outlineVariant.withValues(alpha: 0.30),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    node.type == 'camera'
+                        ? Icons.videocam_rounded
+                        : Icons.sensors_rounded,
+                    size: 16,
+                    color: isSelected ? Colors.white : AppColors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    node.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                      color: isSelected ? Colors.white : AppColors.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }

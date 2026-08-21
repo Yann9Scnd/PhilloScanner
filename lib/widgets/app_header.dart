@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
 import '../theme/app_theme.dart';
-import 'esp_config_dialog.dart';
+import 'esp_node_dialog.dart';
 
 /// Shared AppBar / Header for all screens
 /// Mirrors the React `Header.tsx`:
 ///  - Logo + Brand "Phylloscanner" + "Smart Greenhouse v2.4"
-///  - Tombol ESP32 (buka EspConfigDialog)
+///  - Tombol ESP32 (buka EspNodeDialog)
 ///  - Bel notifikasi dengan badge jumlah belum dibaca -> drawer notifikasi
 ///  - Avatar profil petani -> modal profil
 class AppHeader extends StatefulWidget implements PreferredSizeWidget {
@@ -123,7 +123,7 @@ class _AppHeaderState extends State<AppHeader> {
           const SizedBox(width: 8),
           // Tombol ESP32
           InkWell(
-            onTap: () => EspConfigDialog.show(context),
+            onTap: () => EspNodeDialog.show(context),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
