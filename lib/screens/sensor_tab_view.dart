@@ -117,9 +117,11 @@ class _SensorTabViewState extends State<SensorTabView> {
             ? _tempTrend
             : _humidityTrend;
 
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 32),
+    return RefreshIndicator(
+      onRefresh: _fetchFromApi,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -544,6 +546,7 @@ class _SensorTabViewState extends State<SensorTabView> {
             ),
           ),
         ],
+        ),
       ),
     );
   }
