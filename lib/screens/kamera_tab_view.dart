@@ -22,8 +22,7 @@ class _KameraTabViewState extends State<KameraTabView> {
   bool _flashOn = false;
   bool _isCapturing = false;
   bool _isAnalyzing = false;
-  String _streamResolution = 'SVGA (800x600)';
-  String _ipAddress = EspService.instance.espIp;
+  static const bool _isCameraOnline = false;
 
   static const Map<String, String> _streamImages = {
     'center': 'https://images.unsplash.com/photo-1592417817098-8f3d6eb23659?auto=format&fit=crop&w=800&q=80',
@@ -172,7 +171,9 @@ class _KameraTabViewState extends State<KameraTabView> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.tertiaryContainer.withValues(alpha: 0.20),
+                  color: _isCameraOnline
+                      ? AppColors.tertiaryContainer.withValues(alpha: 0.20)
+                      : const Color(0xFFFEF2F2),
                   borderRadius: BorderRadius.circular(9999),
                 ),
                 child: Row(
@@ -180,16 +181,19 @@ class _KameraTabViewState extends State<KameraTabView> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF4CAF50),
+                      decoration: BoxDecoration(
+                        color: _isCameraOnline ? const Color(0xFF4CAF50) : const Color(0xFFEF4444),
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '30 FPS Live',
-                      style: AppTextStyles.labelMd(color: AppColors.primary)
-                          .copyWith(fontWeight: FontWeight.w600, fontSize: 11),
+                      _isCameraOnline ? '30 FPS Live' : 'Offline',
+                      style: TextStyle(
+                        color: _isCameraOnline ? AppColors.primary : const Color(0xFFEF4444),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
                     ),
                   ],
                 ),
@@ -225,16 +229,24 @@ class _KameraTabViewState extends State<KameraTabView> {
                         Container(
                           width: 8,
                           height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF4CAF50),
+                          decoration: BoxDecoration(
+                            color: _isCameraOnline
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFFEF4444),
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          'LIVE STREAM',
-                          style: AppTextStyles.labelMd(color: const Color(0xFF4CAF50))
-                              .copyWith(fontWeight: FontWeight.w800, letterSpacing: 1),
+                          _isCameraOnline ? 'LIVE STREAM' : 'CAMERA OFFLINE',
+                          style: TextStyle(
+                            color: _isCameraOnline
+                                ? const Color(0xFF4CAF50)
+                                : const Color(0xFFEF4444),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1,
+                            fontSize: 12,
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Container(
@@ -244,7 +256,7 @@ class _KameraTabViewState extends State<KameraTabView> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            '30 FPS • $_streamResolution',
+                            _isCameraOnline ? '30 FPS • SVGA' : 'Menyusul',
                             style: const TextStyle(
                               color: Color(0xFF94A3B8),
                               fontSize: 10,
@@ -254,7 +266,7 @@ class _KameraTabViewState extends State<KameraTabView> {
                         ),
                         const Spacer(),
                         Text(
-                          _ipAddress,
+                          EspService.instance.espIp,
                           style: const TextStyle(
                             color: Color(0xFF94A3B8),
                             fontSize: 10,
@@ -262,7 +274,13 @@ class _KameraTabViewState extends State<KameraTabView> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        const Icon(Icons.wifi_rounded, size: 14, color: Color(0xFF34D399)),
+                        Icon(
+                          Icons.wifi_rounded,
+                          size: 14,
+                          color: _isCameraOnline
+                              ? const Color(0xFF34D399)
+                              : const Color(0xFFEF4444),
+                        ),
                       ],
                     ),
                   ),
@@ -273,13 +291,48 @@ class _KameraTabViewState extends State<KameraTabView> {
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Image.network(
-                          _activeStreamUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (ctx, e, st) => const Center(
-                            child: Icon(Icons.videocam_off_rounded, size: 48, color: Colors.white54),
+                        // Background
+                        if (!_isCameraOnline)
+                          Container(
+                            color: const Color(0xFF0F172A),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.videocam_off_rounded,
+                                    size: 48,
+                                    color: Colors.white.withValues(alpha: 0.25),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'ESP32-CAM Belum Terpasang',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.50),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'Sambungkan ESP32-CAM untuk melihat live stream',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.30),
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          Image.network(
+                            _activeStreamUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, e, st) => const Center(
+                              child: Icon(Icons.videocam_off_rounded, size: 48, color: Colors.white54),
+                            ),
                           ),
-                        ),
 
                         // Flash Effect Overlay
                         if (_flashOn)
@@ -304,47 +357,49 @@ class _KameraTabViewState extends State<KameraTabView> {
                           ),
                         ),
 
-                        // Center Crosshair Guide
-                        Center(
-                          child: Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.50)),
-                            ),
-                            child: Center(
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF4CAF50),
-                                  shape: BoxShape.circle,
+                        // Center Crosshair Guide (only when camera online)
+                        if (_isCameraOnline) ...[
+                          Center(
+                            child: Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.50)),
+                              ),
+                              child: Center(
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF4CAF50),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                        const Center(
-                          child: SizedBox(
-                            width: 160,
-                            child: Row(
-                              children: [
-                                Expanded(child: Divider(color: Color(0x804CAF50), height: 1)),
-                              ],
+                          const Center(
+                            child: SizedBox(
+                              width: 160,
+                              child: Row(
+                                children: [
+                                  Expanded(child: Divider(color: Color(0x804CAF50), height: 1)),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                        const Center(
-                          child: SizedBox(
-                            height: 160,
-                            child: Column(
-                              children: [
-                                Expanded(child: VerticalDivider(color: Color(0x804CAF50), width: 1)),
-                              ],
+                          const Center(
+                            child: SizedBox(
+                              height: 160,
+                              child: Column(
+                                children: [
+                                  Expanded(child: VerticalDivider(color: Color(0x804CAF50), width: 1)),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
+                        ],
 
                         // Angle Overlay Info Badge
                         Positioned(
@@ -374,47 +429,48 @@ class _KameraTabViewState extends State<KameraTabView> {
                           ),
                         ),
 
-                        // LED Flash Toggle
-                        Positioned(
-                          top: 10,
-                          right: 10,
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() => _flashOn = !_flashOn);
-                              _triggerToast(
-                                _flashOn ? 'Lampu Flash ESP32 Dinyalakan' : 'Lampu Flash ESP32 Dimatikan',
-                              );
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: _flashOn
-                                    ? const Color(0xFFFFC53D)
-                                    : Colors.black.withValues(alpha: 0.70),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.lightbulb_rounded,
-                                    size: 14,
-                                    color: _flashOn ? const Color(0xFF0F172A) : const Color(0xFFCBD5E1),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    _flashOn ? 'LED FLASH ON' : 'LED FLASH',
-                                    style: TextStyle(
+                        // LED Flash Toggle (only when online)
+                        if (_isCameraOnline)
+                          Positioned(
+                            top: 10,
+                            right: 10,
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() => _flashOn = !_flashOn);
+                                _triggerToast(
+                                  _flashOn ? 'Lampu Flash ESP32 Dinyalakan' : 'Lampu Flash ESP32 Dimatikan',
+                                );
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: _flashOn
+                                      ? const Color(0xFFFFC53D)
+                                      : Colors.black.withValues(alpha: 0.70),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.lightbulb_rounded,
+                                      size: 14,
                                       color: _flashOn ? const Color(0xFF0F172A) : const Color(0xFFCBD5E1),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _flashOn ? 'LED FLASH ON' : 'LED FLASH',
+                                      style: TextStyle(
+                                        color: _flashOn ? const Color(0xFF0F172A) : const Color(0xFFCBD5E1),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
 
                         // Flash Capture Animation
                         if (_isCapturing)
@@ -437,23 +493,34 @@ class _KameraTabViewState extends State<KameraTabView> {
                       width: double.infinity,
                       height: 46,
                       child: ElevatedButton.icon(
-                        onPressed: _isCapturing || _isAnalyzing ? null : _captureAndAnalyze,
+                        onPressed: !_isCameraOnline || _isCapturing || _isAnalyzing ? null : _captureAndAnalyze,
                         icon: _isAnalyzing
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                               )
-                            : const Icon(Icons.camera_alt_rounded, size: 18),
+                            : Icon(
+                                _isCameraOnline ? Icons.camera_alt_rounded : Icons.videocam_off_rounded,
+                                size: 18,
+                              ),
                         label: Text(
-                          _isAnalyzing
-                              ? 'Menganalisis via Gemini AI...'
-                              : 'Tangkap Foto & Analisa AI',
+                          !_isCameraOnline
+                              ? 'Kamera Tidak Terhubung'
+                              : _isAnalyzing
+                                  ? 'Menganalisis via Gemini AI...'
+                                  : 'Tangkap Foto & Analisa AI',
                           style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFEAA13),
-                          foregroundColor: const Color(0xFF0F172A),
+                          backgroundColor: _isCameraOnline
+                              ? const Color(0xFFFEAA13)
+                              : const Color(0xFF475569),
+                          foregroundColor: _isCameraOnline
+                              ? const Color(0xFF0F172A)
+                              : Colors.white.withValues(alpha: 0.6),
+                          disabledBackgroundColor: const Color(0xFF475569),
+                          disabledForegroundColor: Colors.white.withValues(alpha: 0.4),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
@@ -578,7 +645,7 @@ class _KameraTabViewState extends State<KameraTabView> {
           ),
           const SizedBox(height: 16),
 
-          // Stream Config & ESP32 Node Info
+          // ESP32-CAM Info Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -591,86 +658,73 @@ class _KameraTabViewState extends State<KameraTabView> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.settings_rounded, size: 18, color: AppColors.primary),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 18,
+                      color: _isCameraOnline ? AppColors.primary : const Color(0xFF94A3B8),
+                    ),
                     const SizedBox(width: 8),
                     Text(
-                      'Pengaturan Koneksi ESP32-CAM',
+                      'Status ESP32-CAM',
                       style: AppTextStyles.titleMd(color: AppColors.onSurface),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                // IP Address
-                Text(
-                  'IP Address ESP32 Stream:',
-                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
-                ),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: TextEditingController(text: _ipAddress)
-                    ..selection = TextSelection.collapsed(offset: _ipAddress.length),
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    prefixIcon: const Icon(Icons.router_rounded, size: 18),
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _isCameraOnline
+                        ? const Color(0xFFF0FDF4)
+                        : const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _isCameraOnline
+                          ? const Color(0xFFBBF7D0)
+                          : const Color(0xFFFECACA),
                     ),
                   ),
-                  onChanged: (value) {
-                    _ipAddress = value.trim();
-                    _espService.espIp = value.trim();
-                  },
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isCameraOnline
+                            ? Icons.check_circle_rounded
+                            : Icons.cancel_rounded,
+                        size: 20,
+                        color: _isCameraOnline
+                            ? const Color(0xFF22C55E)
+                            : const Color(0xFFEF4444),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _isCameraOnline
+                              ? 'ESP32-CAM terhubung. Live stream aktif.'
+                              : 'ESP32-CAM belum terpasang. Fitur kamera & AI akan tersedia setelah ESP32-CAM terhubung.',
+                          style: TextStyle(
+                            color: _isCameraOnline
+                                ? const Color(0xFF166534)
+                                : const Color(0xFF991B1B),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
-
-                // Resolution Dropdown
                 Text(
-                  'Kualitas Resolusi Gambar:',
-                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
+                  'Kapan ESP32-CAM tersedia?',
+                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _streamResolution,
-                      isExpanded: true,
-                      icon: const Icon(Icons.arrow_drop_down_rounded),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'VGA (640x480)',
-                          child: Text('VGA (640x480) - Cepat', style: TextStyle(fontSize: 13)),
-                        ),
-                        DropdownMenuItem(
-                          value: 'SVGA (800x600)',
-                          child: Text('SVGA (800x600) - Standar', style: TextStyle(fontSize: 13)),
-                        ),
-                        DropdownMenuItem(
-                          value: 'UXGA (1600x1200)',
-                          child: Text('UXGA (1600x1200) - HD', style: TextStyle(fontSize: 13)),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() => _streamResolution = value);
-                        }
-                      },
-                    ),
-                  ),
+                Text(
+                  'ESP32-CAM akan mengirimkan live stream video ke aplikasi ini. '
+                  'Kamu bisa mengontrol lengan robot dan mengambil foto daun untuk dianalisis dengan AI.',
+                  style: AppTextStyles.bodyMd(color: AppColors.onSurfaceVariant),
                 ),
               ],
             ),
