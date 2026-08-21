@@ -62,6 +62,12 @@ class _SensorTabViewState extends State<SensorTabView> {
         // Tidak ada data di server, tetap pakai data lokal
         setState(() { _isLoading = false; _lastError = null; });
       }
+
+      final actuators = await ApiClient().fetchActuatorState();
+      if (!mounted) return;
+      if (actuators != null) {
+        widget.onUpdateActuators(actuators);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -73,26 +79,34 @@ class _SensorTabViewState extends State<SensorTabView> {
 
   void _togglePump() {
     final nextState = !widget.actuatorState.pumpActive;
-    widget.onUpdateActuators(widget.actuatorState.copyWith(pumpActive: nextState));
+    final newState = widget.actuatorState.copyWith(pumpActive: nextState);
+    widget.onUpdateActuators(newState);
     EspService.instance.toggleActuator('pump', nextState);
+    ApiClient().updateActuatorState(newState);
   }
 
   void _togglePesticide() {
     final nextState = !widget.actuatorState.pesticideActive;
-    widget.onUpdateActuators(widget.actuatorState.copyWith(pesticideActive: nextState));
+    final newState = widget.actuatorState.copyWith(pesticideActive: nextState);
+    widget.onUpdateActuators(newState);
     EspService.instance.toggleActuator('pesticide', nextState);
+    ApiClient().updateActuatorState(newState);
   }
 
   void _toggleLaser() {
     final nextState = !widget.actuatorState.laserActive;
-    widget.onUpdateActuators(widget.actuatorState.copyWith(laserActive: nextState));
+    final newState = widget.actuatorState.copyWith(laserActive: nextState);
+    widget.onUpdateActuators(newState);
     EspService.instance.toggleActuator('laser', nextState);
+    ApiClient().updateActuatorState(newState);
   }
 
   void _toggleLed() {
     final nextState = !widget.actuatorState.ledActive;
-    widget.onUpdateActuators(widget.actuatorState.copyWith(ledActive: nextState));
+    final newState = widget.actuatorState.copyWith(ledActive: nextState);
+    widget.onUpdateActuators(newState);
     EspService.instance.toggleActuator('led', nextState);
+    ApiClient().updateActuatorState(newState);
   }
 
   @override

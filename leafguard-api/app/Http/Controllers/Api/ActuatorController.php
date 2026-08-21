@@ -13,9 +13,11 @@ class ActuatorController extends Controller
      */
     public function index()
     {
-        $state = ActuatorState::latest()->first();
-        if (!$state) {
-            $state = ActuatorState::create([
+        $existing = ActuatorState::latest('id')->first();
+
+        $state = ActuatorState::updateOrCreate(
+            $existing ? ['id' => $existing->id] : [],
+            $existing ? [] : [
                 'pump_auto_mode' => true,
                 'pump_active' => false,
                 'pesticide_active' => false,
@@ -24,8 +26,9 @@ class ActuatorController extends Controller
                 'misting_active' => true,
                 'grow_light_active' => false,
                 'fan_active' => true,
-            ]);
-        }
+            ]
+        );
+
         return response()->json($state);
     }
 
@@ -45,7 +48,13 @@ class ActuatorController extends Controller
             'fan_active' => 'nullable|boolean',
         ]);
 
-        $state = ActuatorState::create($validated);
-        return response()->json($state, 201);
+        $existing = ActuatorState::latest('id')->first();
+
+        $state = ActuatorState::updateOrCreate(
+            $existing ? ['id' => $existing->id] : [],
+            $validated
+        );
+
+        return response()->json($state, $existing ? 200 : 201);
     }
 }

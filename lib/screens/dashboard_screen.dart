@@ -5,6 +5,7 @@ import '../models/notification_model.dart';
 import '../models/scan_result_model.dart';
 import '../models/sensor_data_model.dart';
 import '../repositories/scan_repository.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_header.dart';
 import '../widgets/bottom_nav_item.dart';
@@ -26,6 +27,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
 
   final ScanRepository _scanRepository = ScanRepository();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchActuatorState();
+  }
+
+  /// Ambil status aktuator terakhir dari server Laravel saat aplikasi dibuka.
+  Future<void> _fetchActuatorState() async {
+    final actuators = await ApiClient().fetchActuatorState();
+    if (!mounted || actuators == null) return;
+    setState(() {
+      _actuatorState = actuators;
+    });
+  }
 
   SensorDataModel _sensorData = SensorDataModel.initial();
   ActuatorStateModel _actuatorState = ActuatorStateModel.initial();
