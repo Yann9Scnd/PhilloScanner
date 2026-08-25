@@ -6,7 +6,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../models/chat_message_model.dart';
 import '../models/scan_result_model.dart';
+import '../services/ai_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/ai_config_dialog.dart';
 
 /// Tab Daun — 2 Sub-mode:
 ///  1) Scan & Diagnosa AI
@@ -119,41 +121,69 @@ class _DaunTabViewState extends State<DaunTabView> {
   // ===== Scanner: proses scan sampel / upload foto =====
   Future<void> _runScan(
     String imageUrl, {
-    String diseaseName = 'Bercak Daun Cercospora',
-    String latinName = 'Cercospora capsici',
-    int confidence = 91,
-    String severity = 'Sedang',
-    List<String> recommendations = const [
-      'Semprotkan fungisida tembaga hidroksida organik pada pagi hari.',
-      'Pangkas daun yang terinfeksi bercak untuk mencegah penyebaran spora.',
-      'Nyalakan Kipas Ventilasi untuk menurunkan kelembapan udara.',
-    ],
+    String diseaseName = '',
+    String latinName = '',
+    int confidence = 0,
+    String severity = '',
+    List<String> recommendations = const [],
     String deviceSource = 'Kamera Smartphone',
-    String sector = 'Upload Foto Galeri',
+    String sector = 'Upload Foto',
   }) async {
     setState(() => _isScanning = true);
 
-    await Future.delayed(const Duration(milliseconds: 1500));
+    ScanResultModel result;
+    final bool useAi = diseaseName.isEmpty && AiService.instance.isConfigured;
 
-    if (!mounted) return;
-    setState(() {
-      _scanResult = ScanResultModel(
+    if (useAi) {
+      try {
+        result = await AiService.instance.analyzeLeaf(
+          imageUrl: imageUrl,
+          deviceSource: deviceSource,
+          sector: sector,
+        );
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isScanning = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+    } else {
+      await Future.delayed(const Duration(milliseconds: 1500));
+      result = ScanResultModel(
         deviceId: deviceSource,
         imageUrl: imageUrl,
-        diseaseName: diseaseName,
-        scientificName: latinName,
-        severity: severity,
-        confidence: confidence,
+        diseaseName: diseaseName.isNotEmpty ? diseaseName : 'Bercak Daun Cercospora',
+        scientificName: latinName.isNotEmpty ? latinName : 'Cercospora capsici',
+        severity: severity.isNotEmpty ? severity : 'Sedang',
+        confidence: confidence > 0 ? confidence : 91,
         timestamp: 'Baru saja',
         soilMoisture: '60%',
         sector: sector,
         temperatureAtScan: 28,
-        aiRecommendations: recommendations,
+        aiRecommendations: recommendations.isNotEmpty
+            ? recommendations
+            : [
+                'Semprotkan fungisida tembaga hidroksida organik pada pagi hari.',
+                'Pangkas daun yang terinfeksi bercak untuk mencegah penyebaran spora.',
+                'Nyalakan Kipas Ventilasi untuk menurunkan kelembapan udara.',
+              ],
       );
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _scanResult = result;
       _isScanning = false;
       _activeSubMode = 0;
     });
-    _showToast('Hasil Scan Diperbarui: $diseaseName');
+    _showToast('Hasil Scan: ${result.diseaseName}');
   }
 
   Future<void> _pickAndScanImage() async {
@@ -360,6 +390,26 @@ class _DaunTabViewState extends State<DaunTabView> {
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600)),
                           ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: () => AiConfigDialog.show(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AiService.instance.isConfigured
+                              ? const Color(0xFF16A34A).withValues(alpha: 0.10)
+                              : AppColors.error.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          Icons.psychology_rounded,
+                          size: 14,
+                          color: AiService.instance.isConfigured
+                              ? const Color(0xFF16A34A)
+                              : AppColors.error,
                         ),
                       ),
                     ),

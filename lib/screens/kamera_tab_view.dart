@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/scan_result_model.dart';
+import '../services/ai_service.dart';
 import '../services/esp_service.dart';
 import '../theme/app_theme.dart';
 import 'detail_scan_screen.dart';
@@ -104,29 +105,54 @@ class _KameraTabViewState extends State<KameraTabView> {
       _isCapturing = false;
       _isAnalyzing = true;
     });
-    _triggerToast('Foto berhasil ditangkap dari ESP32-CAM! Menganalisis via Gemini AI...');
+    _triggerToast('Foto berhasil ditangkap dari ESP32-CAM! Menganalisis...');
 
-    await Future.delayed(const Duration(seconds: 2));
+    ScanResultModel newScan;
+
+    if (AiService.instance.isConfigured) {
+      try {
+        newScan = await AiService.instance.analyzeLeaf(
+          imageUrl: _activeStreamUrl,
+          deviceSource: 'Node 1: ESP32-CAM (Bedeng Barat)',
+          sector: 'Greenhouse Sektor A',
+          soilMoisture: '64%',
+          temperatureAtScan: 27.5,
+        );
+      } catch (e) {
+        if (mounted) {
+          setState(() { _isAnalyzing = false; });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+    } else {
+      await Future.delayed(const Duration(seconds: 2));
+      newScan = ScanResultModel(
+        deviceId: 'Node 1: ESP32-CAM (Bedeng Barat)',
+        imageUrl: _activeStreamUrl,
+        diseaseName: 'Bercak Daun Cercospora',
+        scientificName: 'Cercospora capsici',
+        severity: 'Sedang',
+        confidence: 94,
+        timestamp: 'Baru saja',
+        soilMoisture: '64%',
+        sector: 'Greenhouse Sektor A',
+        temperatureAtScan: 27.5,
+        aiRecommendations: [
+          'Semprotkan bio-fungisida tembaga hidroksida pada permukaan bawah daun cabai pada pagi hari.',
+          'Pangkas daun cabai tua di area bawah yang bersentuhan dengan tanah atau mulsa.',
+          'Nyalakan kipas ventilasi lewat Node 2 ESP32 untuk menurunkan kelembapan udara mikro.',
+        ],
+      );
+    }
 
     if (!mounted) return;
-    final newScan = ScanResultModel(
-      deviceId: 'Node 1: ESP32-CAM (Bedeng Barat)',
-      imageUrl: _activeStreamUrl,
-      diseaseName: 'Bercak Daun Cercospora',
-      scientificName: 'Cercospora capsici',
-      severity: 'Sedang',
-      confidence: 94,
-      timestamp: 'Baru saja',
-      soilMoisture: '64%',
-      sector: 'Greenhouse Sektor A',
-      temperatureAtScan: 27.5,
-      aiRecommendations: [
-        'Semprotkan bio-fungisida tembaga hidroksida pada permukaan bawah daun cabai pada pagi hari.',
-        'Pangkas daun cabai tua di area bawah yang bersentuhan dengan tanah atau mulsa.',
-        'Nyalakan kipas ventilasi lewat Node 2 ESP32 untuk menurunkan kelembapan udara mikro.',
-      ],
-    );
-
     setState(() {
       _isAnalyzing = false;
     });
