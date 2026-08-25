@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\ActuatorController;
+use App\Http\Controllers\Api\AiController;
 use App\Http\Controllers\Api\ScanResultController;
 use App\Http\Controllers\Api\SensorReadingController;
 use App\Http\Controllers\Api\TelemetryController;
@@ -23,3 +24,6 @@ Route::post('telemetry', [TelemetryController::class, 'store']);
 // Sakelar Aktuator
 Route::get('actuators', [ActuatorController::class, 'index']);
 Route::post('actuators', [ActuatorController::class, 'store']);
+
+// Analisis daun via AI (foto dikirim ke backend, backend panggil OpenAI/Gemini)
+Route::post('ai/analyze', [AiController::class, 'analyze']);
