@@ -47,6 +47,73 @@ class AiController extends Controller
         }
     }
 
+    public function chat(Request $request)
+    {
+        $request->validate([
+            'message' => 'required|string|max:2000',
+        ]);
+
+        $provider = config('ai.provider', 'openrouter');
+        $apiKey = match ($provider) {
+            'openai' => config('ai.openai_key', ''),
+            'gemini' => config('ai.gemini_key', ''),
+            default => config('ai.openrouter_key', ''),
+        };
+
+        if (empty($apiKey)) {
+            return response()->json([
+                'reply' => 'API Key belum dikonfigurasi. Silakan hubungi admin.',
+            ]);
+        }
+
+        $systemPrompt = "Kamu adalah asisten AI ahli pertanian cabai (Capsicum annuum) bernama ChiliGuard AI.
+Kamu membantu petani cabai dengan pertanyaan tentang:
+- Penyakit daun cabai (Cercospora, Antraknosa, Keriting Daun, Bule/Layu Virus, dll)
+- Hama dan pengendaliannya
+- Pemupukan dan nutrisi yang tepat
+- Irigasi dan pengaturan air
+- Tips budidaya cabai yang baik
+
+Aturan:
+- Selalu jawab dalam Bahasa Indonesia yang mudah dipahami petani
+- Berikan jawaban yang praktis dan actionable
+- Jangan berlebihan, jawab singkat dan to the point (maks 3-4 kalimat)
+- Jika tidak yakin, katakan dengan jujur";
+
+        try {
+            $reply = $this->callChatApi($apiKey, $request->message, $systemPrompt);
+            return response()->json(['reply' => $reply]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'reply' => 'Maaf, terjadi gangguan pada AI. Silakan coba lagi.',
+            ]);
+        }
+    }
+
+    private function callChatApi(string $apiKey, string $userMessage, string $systemPrompt): string
+    {
+        $model = config('ai.openrouter_model', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type' => 'application/json',
+            'HTTP-Referer' => 'https://philloscanner.app',
+            'X-Title' => 'PhilloScanner',
+        ])->timeout(30)->post('https://openrouter.ai/api/v1/chat/completions', [
+            'model' => $model,
+            'max_tokens' => 300,
+            'messages' => [
+                ['role' => 'system', 'content' => $systemPrompt],
+                ['role' => 'user', 'content' => $userMessage],
+            ],
+        ]);
+
+        $response->throw();
+        $body = $response->json();
+        $message = $body['choices'][0]['message'] ?? [];
+        return $message['content'] ?? $message['reasoning'] ?? 'Maaf, saya tidak bisa merespons saat ini.';
+    }
+
     private function getPrompt(): string
     {
         return <<<'PROMPT'
@@ -77,7 +144,7 @@ PROMPT;
 
     private function callOpenRouter(string $apiKey, string $base64Image, string $prompt): array
     {
-        $model = config('ai.openrouter_model', 'google/gemini-2.0-flash-001:free');
+        $model = config('ai.openrouter_model', 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free');
 
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
@@ -105,7 +172,12 @@ PROMPT;
         ]);
 
         $response->throw();
-        $content = $response->json('choices.0.message.content', '');
+        $body = $response->json();
+        $message = $body['choices'][0]['message'] ?? [];
+        $content = $message['content'] ?? $message['reasoning'] ?? '';
+        if (empty($content)) {
+            $content = json_encode($body);
+        }
         return $this->parseAiResponse($content);
     }
 
@@ -174,12 +246,25 @@ PROMPT;
     {
         $cleaned = trim($raw);
 
+        // Hapus thinking tags jika ada
+        $cleaned = preg_replace('/<think>.*?<\/think>/us', '', $cleaned);
+        $cleaned = preg_replace('/<reasoning>.*?<\/reasoning>/us', '', $cleaned);
+        $cleaned = preg_replace('/<thinking>.*?<\/thinking>/us', '', $cleaned);
+        $cleaned = trim($cleaned);
+
+        // Coba extract JSON dari teks (handle nested braces)
+        $braceStart = strpos($cleaned, '{');
+        $braceEnd = strrpos($cleaned, '}');
+        if ($braceStart !== false && $braceEnd !== false && $braceEnd > $braceStart) {
+            $cleaned = substr($cleaned, $braceStart, $braceEnd - $braceStart + 1);
+        }
+
         if (str_starts_with($cleaned, '```')) {
             $cleaned = preg_replace('/^```(json)?\s*\n?/', '', $cleaned);
             $cleaned = preg_replace('/\n?```\s*$/', '', $cleaned);
         }
 
-        $json = json_decode($cleaned, true);
+        $json = json_decode(trim($cleaned), true);
 
         if (!is_array($json)) {
             throw new \RuntimeException('Respons AI tidak valid: ' . $cleaned);

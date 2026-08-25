@@ -227,32 +227,30 @@ class _DaunTabViewState extends State<DaunTabView> {
     });
     _scrollChatToBottom();
 
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    if (!mounted) return;
-    final q = text.toLowerCase();
-    String replyText =
-        'Terima kasih atas pertanyaannya. Untuk masalah tersebut, pastikan sirkulasi udara di greenhouse terjaga baik dan dosis pupuk seimbang.';
-    if (q.contains('jamur') || q.contains('fungisida') || q.contains('bercak')) {
-      replyText =
-          'Untuk mengatasi infeksi jamur seperti Cercospora, gunakan bio-fungisida Trichoderma sp. atau larutan minyak mimba (Neem Oil) dosis 5ml/liter air. Semprotkan di pagi hari.';
-    } else if (q.contains('pupuk') || q.contains('nutrisi')) {
-      replyText =
-          'Pastikan kadar PPM nutrisi berada di angka 1000 - 1200 PPM dengan pH media tanah 6.0 - 6.5 agar serapan hara optimal.';
-    } else if (q.contains('kamera') || q.contains('esp32')) {
-      replyText =
-          'Anda dapat memantau daun secara langsung dan menggerakkan sudut lensa kamera dari menu Kamera ESP32.';
+    try {
+      final replyText = await AiService.instance.chat(text);
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessageModel(
+          id: 'ai-${DateTime.now().millisecondsSinceEpoch}',
+          sender: 'ai',
+          text: replyText,
+          timestamp: 'Baru saja',
+        ));
+        _isChatLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(ChatMessageModel(
+          id: 'ai-${DateTime.now().millisecondsSinceEpoch}',
+          sender: 'ai',
+          text: 'Maaf, terjadi gangguan. Coba lagi.',
+          timestamp: 'Baru saja',
+        ));
+        _isChatLoading = false;
+      });
     }
-
-    setState(() {
-      _messages.add(ChatMessageModel(
-        id: 'ai-${DateTime.now().millisecondsSinceEpoch}',
-        sender: 'ai',
-        text: replyText,
-        timestamp: 'Baru saja',
-      ));
-      _isChatLoading = false;
-    });
     _scrollChatToBottom();
   }
 

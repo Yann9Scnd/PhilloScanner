@@ -68,6 +68,20 @@ class AiService {
     }
     throw Exception('Gagal download gambar: ${response.statusCode}');
   }
+
+  Future<String> chat(String message) async {
+    final client = ApiClient();
+    final res = await client.postRaw('ai/chat', body: {
+      'message': message,
+    });
+
+    if (res.statusCode != 200) {
+      throw AiException('Gagal menghubungi AI (${res.statusCode})');
+    }
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return data['reply']?.toString() ?? 'Maaf, tidak ada respons.';
+  }
 }
 
 class AiException implements Exception {

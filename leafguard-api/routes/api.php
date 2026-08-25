@@ -27,3 +27,4 @@ Route::post('actuators', [ActuatorController::class, 'store']);
 
 // Analisis daun via AI (foto dikirim ke backend, backend panggil OpenAI/Gemini)
 Route::post('ai/analyze', [AiController::class, 'analyze']);
+Route::post('ai/chat', [AiController::class, 'chat']);
