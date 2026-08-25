@@ -98,6 +98,15 @@ class ApiClient {
     return data['id'] as int? ?? 1;
   }
 
+  /// POST raw ke endpoint tertentu, kembalikan Response.
+  Future<http.Response> postRaw(String path, {required Map<String, dynamic> body}) async {
+    return _client.post(
+      _uri(path),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+  }
+
   /// GET /api/sensor-readings
   Future<List<SensorDataModel>> fetchSensorReadings() async {
     final res = await _client.get(_uri('sensor-readings'));

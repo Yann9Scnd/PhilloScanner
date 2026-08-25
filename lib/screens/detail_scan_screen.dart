@@ -18,7 +18,7 @@ class _DetailScanScreenState extends State<DetailScanScreen> {
   static const _defaultScan = ScanResultModel(
     deviceId: 'ESP32-CAM Sektor B-04',
     imageUrl:
-        'https://lh3.googleusercontent.com/aida/AP1WRLsJNUTrlybw3NU7q_uVkGQ2i6ryWi7lAXAGkOSvK_H2Ptj28d2-iZ--leefUeHsmVULchMwRDed-DsFju613H_X7TztLlQM821oZKXYF_4PrWPd8DFjAvWQHWXhrFAGvB5Rrw8anPY1K0deDmtaCTLCD2H1WG9eT53kZBJqRDVh8-u1C4d2vm72Hr24gioVwOVzH9sz-OHjukpoyBkBBiPKQKF9t-eGPhcSyBcjKjHvrcTbgs5jR9GWKMok',
+        'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=800&auto=format&fit=crop',
     diseaseName: 'Bercak Daun',
     scientificName: 'Cercospora capsici',
     severity: 'Sedang',

@@ -109,47 +109,26 @@ class _KameraTabViewState extends State<KameraTabView> {
 
     ScanResultModel newScan;
 
-    if (AiService.instance.isConfigured) {
-      try {
-        newScan = await AiService.instance.analyzeLeaf(
-          imageUrl: _activeStreamUrl,
-          deviceSource: 'Node 1: ESP32-CAM (Bedeng Barat)',
-          sector: 'Greenhouse Sektor A',
-          soilMoisture: '64%',
-          temperatureAtScan: 27.5,
-        );
-      } catch (e) {
-        if (mounted) {
-          setState(() { _isAnalyzing = false; });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.toString()),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-    } else {
-      await Future.delayed(const Duration(seconds: 2));
-      newScan = ScanResultModel(
-        deviceId: 'Node 1: ESP32-CAM (Bedeng Barat)',
+    try {
+      newScan = await AiService.instance.analyzeLeaf(
         imageUrl: _activeStreamUrl,
-        diseaseName: 'Bercak Daun Cercospora',
-        scientificName: 'Cercospora capsici',
-        severity: 'Sedang',
-        confidence: 94,
-        timestamp: 'Baru saja',
-        soilMoisture: '64%',
+        deviceSource: 'Node 1: ESP32-CAM (Bedeng Barat)',
         sector: 'Greenhouse Sektor A',
+        soilMoisture: '64%',
         temperatureAtScan: 27.5,
-        aiRecommendations: [
-          'Semprotkan bio-fungisida tembaga hidroksida pada permukaan bawah daun cabai pada pagi hari.',
-          'Pangkas daun cabai tua di area bawah yang bersentuhan dengan tanah atau mulsa.',
-          'Nyalakan kipas ventilasi lewat Node 2 ESP32 untuk menurunkan kelembapan udara mikro.',
-        ],
       );
+    } catch (e) {
+      if (mounted) {
+        setState(() { _isAnalyzing = false; });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
     }
 
     if (!mounted) return;

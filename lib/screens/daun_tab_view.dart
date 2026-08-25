@@ -8,7 +8,6 @@ import '../models/chat_message_model.dart';
 import '../models/scan_result_model.dart';
 import '../services/ai_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/ai_config_dialog.dart';
 
 /// Tab Daun — 2 Sub-mode:
 ///  1) Scan & Diagnosa AI
@@ -132,7 +131,7 @@ class _DaunTabViewState extends State<DaunTabView> {
     setState(() => _isScanning = true);
 
     ScanResultModel result;
-    final bool useAi = diseaseName.isEmpty && AiService.instance.isConfigured;
+    final bool useAi = diseaseName.isEmpty;
 
     if (useAi) {
       try {
@@ -390,26 +389,6 @@ class _DaunTabViewState extends State<DaunTabView> {
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600)),
                           ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    GestureDetector(
-                      onTap: () => AiConfigDialog.show(context),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AiService.instance.isConfigured
-                              ? const Color(0xFF16A34A).withValues(alpha: 0.10)
-                              : AppColors.error.withValues(alpha: 0.10),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.psychology_rounded,
-                          size: 14,
-                          color: AiService.instance.isConfigured
-                              ? const Color(0xFF16A34A)
-                              : AppColors.error,
                         ),
                       ),
                     ),

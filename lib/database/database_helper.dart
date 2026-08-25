@@ -158,7 +158,7 @@ class DatabaseHelper {
       const ScanResultModel(
         deviceId: 'ESP32-CAM Sektor B-04',
         imageUrl:
-            'https://lh3.googleusercontent.com/aida/AP1WRLsJNUTrlybw3NU7q_uVkGQ2i6ryWi7lAXAGkOSvK_H2Ptj28d2-iZ--leefUeHsmVULchMwRDed-DsFju613H_X7TztLlQM821oZKXYF_4PrWPd8DFjAvWQHWXhrFAGvB5Rrw8anPY1K0deDmtaCTLCD2H1WG9eT53kZBJqRDVh8-u1C4d2vm72Hr24gioVwOVzH9sz-OHjukpoyBkBBiPKQKF9t-eGPhcSyBcjKjHvrcTbgs5jR9GWKMok',
+            'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=800&auto=format&fit=crop',
         diseaseName: 'Bercak Daun',
         scientificName: 'Cercospora capsici',
         severity: 'Sedang',
@@ -174,7 +174,7 @@ class DatabaseHelper {
       const ScanResultModel(
         deviceId: 'ESP32-CAM Sektor A-01',
         imageUrl:
-            'https://lh3.googleusercontent.com/aida-public/AB6AXuDImDcqK7-2TTfEsSRFVDFrIL3dQC65jCejg5cgzzThGqbPc0YSXIKHK65Bv3w6jaLbb4vCHoWMCu1it6APEayNlB3gCHUyBhrdSpETKR_zOBRDhX55O8SMMDhqzDi2RxH30VpHV7n4_4owIfcONwCDp3rtJrW96aeAUp9p6I5ANQylU_4936R6VO1pIDMY2tjqDjPk1tXDSjMhqIVSkGUc9eeDfuMpN75K-HkO-Tgj3NvEUWr_LbPUVQ',
+            'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
         diseaseName: 'Karat Daun',
         scientificName: 'Puccinia sorghi',
         severity: 'Rendah',

@@ -73,7 +73,7 @@ class ActivityLogModel {
       ActivityLogModel(
         id: 'act-4',
         title: 'Dual Node ESP32 Terhubung',
-        subtitle: 'Node 1 (CAM: 192.168.4.1) & Node 2 (Sensor: 192.168.4.2) Online',
+        subtitle: 'Node 1 (CAM) & Node 2 (Sensor) Online',
         timestamp: '08:00 WIB',
         type: 'system_info',
         sector: 'Kebun Cabai',
