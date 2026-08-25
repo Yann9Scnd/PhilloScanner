@@ -18,25 +18,27 @@ class AiController extends Controller
             'soil_moisture' => 'nullable|string',
         ]);
 
-        $provider = config('ai.provider', 'gemini');
-        $apiKey = $provider === 'openai'
-            ? config('ai.openai_key', '')
-            : config('ai.gemini_key', '');
+        $provider = config('ai.provider', 'openrouter');
+        $apiKey = match ($provider) {
+            'openai' => config('ai.openai_key', ''),
+            'gemini' => config('ai.gemini_key', ''),
+            default => config('ai.openrouter_key', ''),
+        };
 
         if (empty($apiKey)) {
             return response()->json([
-                'error' => 'API Key belum dikonfigurasi di server.',
+                'error' => "API Key untuk provider '$provider' belum dikonfigurasi di server.",
             ], 500);
         }
 
         $prompt = $this->getPrompt();
 
         try {
-            if ($provider === 'openai') {
-                $result = $this->callOpenAI($apiKey, $request->image, $prompt);
-            } else {
-                $result = $this->callGemini($apiKey, $request->image, $prompt);
-            }
+            $result = match ($provider) {
+                'openai' => $this->callOpenAI($apiKey, $request->image, $prompt),
+                'gemini' => $this->callGemini($apiKey, $request->image, $prompt),
+                default => $this->callOpenRouter($apiKey, $request->image, $prompt),
+            };
             return response()->json($result);
         } catch (\Exception $e) {
             return response()->json([
@@ -71,6 +73,40 @@ Aturan:
 - Berikan 3-5 rekomendasi penanganan yang praktis untuk petani cabai
 - Selalu gunakan Bahasa Indonesia
 PROMPT;
+    }
+
+    private function callOpenRouter(string $apiKey, string $base64Image, string $prompt): array
+    {
+        $model = config('ai.openrouter_model', 'google/gemini-2.0-flash-001:free');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $apiKey,
+            'Content-Type' => 'application/json',
+            'HTTP-Referer' => 'https://philloscanner.app',
+            'X-Title' => 'PhilloScanner',
+        ])->timeout(30)->post('https://openrouter.ai/api/v1/chat/completions', [
+            'model' => $model,
+            'max_tokens' => 600,
+            'messages' => [
+                ['role' => 'system', 'content' => $prompt],
+                [
+                    'role' => 'user',
+                    'content' => [
+                        ['type' => 'text', 'text' => 'Analisis foto daun cabai ini. Identifikasi penyakit, tingkat keparahan, dan berikan rekomendasi penanganan.'],
+                        [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => 'data:image/jpeg;base64,' . $base64Image,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $response->throw();
+        $content = $response->json('choices.0.message.content', '');
+        return $this->parseAiResponse($content);
     }
 
     private function callOpenAI(string $apiKey, string $base64Image, string $prompt): array
