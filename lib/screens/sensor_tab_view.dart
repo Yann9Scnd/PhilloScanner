@@ -97,6 +97,19 @@ class _SensorTabViewState extends State<SensorTabView> {
         timestamp: 'Langsung dari ESP32',
       );
       widget.onUpdateSensors(reading);
+
+      // Sync aktuator state dari ESP32
+      final espPump = (espData['pump'] as bool?) ?? false;
+      final espPesticide = (espData['pesticide'] as bool?) ?? false;
+      final currentActuator = widget.actuatorState;
+      if (currentActuator.pumpActive != espPump ||
+          currentActuator.pesticideActive != espPesticide) {
+        widget.onUpdateActuators(currentActuator.copyWith(
+          pumpActive: espPump,
+          pesticideActive: espPesticide,
+        ));
+      }
+
       setState(() { _isLoading = false; _lastError = null; });
     } else {
       setState(() {

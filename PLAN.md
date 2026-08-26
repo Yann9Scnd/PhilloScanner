@@ -6,6 +6,9 @@
 - Sensor tab fetch + auto-refresh 5s + Live/Offline indicator
 - Aktuator sync ke Laravel (pompa, pestisida, laser, fan)
 - ESP32 WebServer + relay sync + POST telemetry ke Laravel
+- ESP32 pesticide relay pin 27 (+ /pesticide/on, /pesticide/off endpoints)
+- Flutter pesticide toggle kirim ke ESP32 (sudah di-fix)
+- Flutter parse pesticide state dari ESP32 langsung
 - Node Management (CRUD ESP32 nodes)
 - AI Chat via OpenRouter (backend call, bukan lokal)
 - AI Scan foto via OpenRouter (backend call)
@@ -95,6 +98,14 @@ chiliguard/
 
 ## Checklist Besok
 
+- [ ] **URGENT: Download & install NDK 28.2.13676358**
+  Folder `C:\Users\ADMIN\AppData\Local\Android\Sdk\ndk\28.2.13676358` tidak sengaja terhapus.
+  Tanpa NDK, `flutter run` ke HP gagal. Cara install:
+  ```
+  sdkmanager "ndk;28.2.13676358"
+  ```
+  Atau download manual dari: https://dl.google.com/android/repository/android-ndk-r28c-windows.zip (~1.1GB)
+  Ekstrak ke `C:\Users\ADMIN\AppData\Local\Android\Sdk\ndk\28.2.13676358\`
 - [ ] Fix model OpenRouter (ganti/tambah fallback)
 - [ ] Fix DetailScanScreen chat → pakai AI API
 - [ ] Fix DetailScanScreen save → panggil callback
@@ -104,3 +115,32 @@ chiliguard/
 - [ ] Buat `lib/ml/` module
 - [ ] Buat `assets/models/` directory
 - [ ] Mulai kumpulkan dataset bercak daun
+
+## Setup Backend untuk Development (26 Agustus 2026)
+
+### Port Allocation
+- **Port 8000**: Laravel API (`leafguard-api/`) — CRUD scans, sensor readings, actuators, AI
+- **Port 8001**: FastAPI ML (`app.py`) — predict, telemetry, ESP32 communication
+
+### Perubahan yang Dilakukan
+- `app.py`: Port diubah 8000 → 8001, import keras/tensorflow dibuat optional (ML belum siap)
+- `esp_service.dart`: `_serverIp` default diubah `192.168.43.182` → `127.0.0.1`
+- `esp_service.dart`: `armServerUrl` port diubah 8000 → 8001
+- Android SDK: install `platforms;android-34`, `build-tools;34.0.0`, `build-tools;35.0.0`, `platforms;android-36`
+
+### Cara Run (Development)
+```powershell
+# 1. Start MySQL (Laragon)
+# 2. Start Laravel
+cd leafguard-api; php artisan serve --host=0.0.0.0 --port=8000
+
+# 3. Start FastAPI
+python app.py  # port 8001
+
+# 4. adb reverse (untuk run di HP via USB)
+adb reverse tcp:8000 tcp:8000
+adb reverse tcp:8001 tcp:8001
+
+# 5. Flutter run
+flutter run -d <device-id>
+```

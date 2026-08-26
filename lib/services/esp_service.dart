@@ -66,7 +66,7 @@ class EspService {
   String espIp = '192.168.43.44';
 
   /// IP server Laravel. Diatur dari dialog atau konfigurasi.
-  String _serverIp = '192.168.43.182';
+  String _serverIp = '127.0.0.1';
 
   // ══════════════════════════════════════════════════════════════
 
@@ -87,7 +87,7 @@ class EspService {
   String get apiBaseUrl => 'http://$_serverIp:8000/api';
 
   /// Server kamera/robot arm (FastAPI app.py).
-  String get armServerUrl => 'http://$_serverIp:8000';
+  String get armServerUrl => 'http://$_serverIp:8001';
 
   /// Base URL ESP32 langsung (WebServer port 80).
   String get espBaseUrl => 'http://$espIp';
@@ -117,18 +117,30 @@ class EspService {
   // ══════════════════════════════════════════════════════════════
 
   /// Toggle aktuator ke ESP32 via HTTP.
-  /// Endpoint baru: GET /pump/on dan GET /pump/off
   Future<bool> toggleActuator(String actuator, bool state) async {
     if (actuator == 'pump') {
       return _togglePump(state);
     }
-    // Aktuator lain (pestisida, laser, LED) belum ada di ESP32 firmware.
+    if (actuator == 'pesticide') {
+      return _togglePesticide(state);
+    }
     return false;
   }
 
   Future<bool> _togglePump(bool state) async {
     try {
       final endpoint = state ? '/pump/on' : '/pump/off';
+      final uri = Uri.parse('$espBaseUrl$endpoint');
+      final res = await _client.get(uri).timeout(const Duration(seconds: 2));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> _togglePesticide(bool state) async {
+    try {
+      final endpoint = state ? '/pesticide/on' : '/pesticide/off';
       final uri = Uri.parse('$espBaseUrl$endpoint');
       final res = await _client.get(uri).timeout(const Duration(seconds: 2));
       return res.statusCode == 200;

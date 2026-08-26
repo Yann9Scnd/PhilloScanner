@@ -5,18 +5,17 @@ from fastapi import FastAPI, File, Form, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-import keras
-import numpy as np
-from PIL import Image
-import tensorflow as tf
 import uvicorn
 
-
-class FixedDense(keras.layers.Dense):
-
-  def __init__(self, *args, quantization_config=None, **kwargs):
-    super().__init__(*args, **kwargs)
-
+try:
+  import keras
+  import numpy as np
+  from PIL import Image
+  import tensorflow as tf
+  ML_AVAILABLE = True
+except ImportError:
+  ML_AVAILABLE = False
+  print("[WARN] keras/tensorflow tidak terinstall. Fitur ML dinonaktifkan.")
 
 app = FastAPI()
 
@@ -40,17 +39,22 @@ POSSIBLE_MODEL_NAMES = [
 ]
 model = None
 
-for filename in POSSIBLE_MODEL_NAMES:
-  full_path = os.path.join(BASE_DIR, filename)
-  if os.path.exists(full_path):
-    try:
-      model = tf.keras.models.load_model(
-          full_path, custom_objects={"Dense": FixedDense}, compile=False
-      )
-      print(f"[SUCCESS] Model dimuat: {filename}")
-      break
-    except Exception as e:
-      print(f"[ERROR] Gagal memuat {filename}: {e}")
+if ML_AVAILABLE:
+  for filename in POSSIBLE_MODEL_NAMES:
+    full_path = os.path.join(BASE_DIR, filename)
+    if os.path.exists(full_path):
+      try:
+        class FixedDense(keras.layers.Dense):
+          def __init__(self, *args, quantization_config=None, **kwargs):
+            super().__init__(*args, **kwargs)
+
+        model = tf.keras.models.load_model(
+            full_path, custom_objects={"Dense": FixedDense}, compile=False
+        )
+        print(f"[SUCCESS] Model dimuat: {filename}")
+        break
+      except Exception as e:
+        print(f"[ERROR] Gagal memuat {filename}: {e}")
 
 CLASS_NAMES = ["healthy", "leaf curl", "leaf spot", "whitefly", "yellowish"]
 
@@ -110,7 +114,7 @@ async def predict(file: UploadFile = File(...)):
 
     latest_frame_bytes = image_bytes
 
-    if camera_mode == "predict" and model is not None:
+    if camera_mode == "predict" and model is not None and ML_AVAILABLE:
       image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
       image_resized = image.resize((224, 224))
       img_array = np.array(image_resized, dtype=np.float32) / 255.0
@@ -256,4 +260,4 @@ def get_servo():
 
 
 if __name__ == "__main__":
-  uvicorn.run(app, host="0.0.0.0", port=8000)
+  uvicorn.run(app, host="0.0.0.0", port=8001)

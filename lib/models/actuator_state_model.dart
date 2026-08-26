@@ -1,4 +1,4 @@
-class ActuatorStateModel {
+  class ActuatorStateModel {
   final bool pumpAutoMode;
   final bool pumpActive;
   final bool pesticideActive;
