@@ -3,12 +3,13 @@
 ## Status Saat Ini (26 Agustus 2026)
 
 ### Sudah Berfungsi
-- Sensor tab fetch + auto-refresh 5s + Live/Offline indicator
-- Aktuator sync ke Laravel (pompa, pestisida, laser, fan)
+- Sensor tab real-time → baca LANGSUNG dari ESP32 `/status` setiap 5 detik (sama dengan serial monitor)
+- Fallback ke Laravel bila ESP32 offline
+- Aktuator sync: pompa & pestisida kirim ke ESP32 real + rollback jika gagal + toast feedback
 - ESP32 WebServer + relay sync + POST telemetry ke Laravel
 - ESP32 pesticide relay pin 27 (+ /pesticide/on, /pesticide/off endpoints)
 - Flutter pesticide toggle kirim ke ESP32 (sudah di-fix)
-- Flutter parse pesticide state dari ESP32 langsung
+- Telemetry POST ke Laravel di code.ino (dikembalikan)
 - Node Management (CRUD ESP32 nodes)
 - AI Chat via OpenRouter (backend call, bukan lokal)
 - AI Scan foto via OpenRouter (backend call)

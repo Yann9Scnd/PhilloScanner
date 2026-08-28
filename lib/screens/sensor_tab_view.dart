@@ -51,38 +51,14 @@ class _SensorTabViewState extends State<SensorTabView> {
     if (!mounted) return;
     setState(() { _isLoading = true; _lastError = null; });
 
-    try {
-      // Coba fetch dari Laravel API dulu
-      final reading = await ApiClient().fetchLatestSensorReading();
-      if (!mounted) return;
+    var reachedEsp = false;
 
-      if (reading != null) {
-        widget.onUpdateSensors(reading);
-        setState(() { _isLoading = false; _lastError = null; });
-      } else {
-        // Laravel tidak ada data, coba fetch langsung dari ESP32
-        await _fetchFromEsp();
-      }
-
-      // Sync actuator state dari Laravel
-      final actuators = await ApiClient().fetchActuatorState();
-      if (!mounted) return;
-      if (actuators != null) {
-        widget.onUpdateActuators(actuators);
-      }
-    } catch (e) {
-      // Laravel offline, coba fetch langsung dari ESP32
-      await _fetchFromEsp();
-    }
-  }
-
-  Future<void> _fetchFromEsp() async {
-    if (!mounted) return;
-
+    // Prioritas 1: baca LANGSUNG dari ESP32 (real-time, sama dengan serial monitor)
     final espData = await EspService.instance.fetchSensorFromEsp();
     if (!mounted) return;
 
     if (espData != null) {
+      reachedEsp = true;
       final reading = SensorDataModel(
         deviceId: 'Node 2: ESP32 Sensor',
         soilMoisture: (espData['soil'] as num?)?.toDouble() ?? 0,
@@ -98,7 +74,7 @@ class _SensorTabViewState extends State<SensorTabView> {
       );
       widget.onUpdateSensors(reading);
 
-      // Sync aktuator state dari ESP32
+      // Sync aktuator state langsung dari ESP32 (pompa & pestisida real)
       final espPump = (espData['pump'] as bool?) ?? false;
       final espPesticide = (espData['pesticide'] as bool?) ?? false;
       final currentActuator = widget.actuatorState;
@@ -111,28 +87,75 @@ class _SensorTabViewState extends State<SensorTabView> {
       }
 
       setState(() { _isLoading = false; _lastError = null; });
-    } else {
-      setState(() {
-        _isLoading = false;
-        _lastError = 'ESP32 & Server tidak terjangkau';
-      });
+    }
+
+    // Prioritas 2: ESP32 tidak terjangkau, fallback ke Laravel (riwayat terakhir)
+    if (!reachedEsp) {
+      try {
+        final reading = await ApiClient().fetchLatestSensorReading();
+        if (!mounted) return;
+
+        if (reading != null) {
+          widget.onUpdateSensors(reading);
+          setState(() {
+            _isLoading = false;
+            _lastError = 'ESP32 offline, data dari server';
+          });
+
+          // Sync actuator state dari Laravel hanya jika ESP32 tidak ada
+          final actuators = await ApiClient().fetchActuatorState();
+          if (!mounted) return;
+          if (actuators != null) {
+            widget.onUpdateActuators(actuators);
+          }
+        } else {
+          setState(() { _isLoading = false; _lastError = 'ESP32 & Server tidak terjangkau'; });
+        }
+      } catch (e) {
+        if (!mounted) return;
+        setState(() { _isLoading = false; _lastError = 'ESP32 & Server tidak terjangkau'; });
+      }
     }
   }
 
-  void _togglePump() {
+  Future<void> _togglePump() async {
     final nextState = !widget.actuatorState.pumpActive;
-    final newState = widget.actuatorState.copyWith(pumpActive: nextState);
+    final oldState = widget.actuatorState;
+
+    // Optimistic update dulu
+    final newState = oldState.copyWith(pumpActive: nextState);
     widget.onUpdateActuators(newState);
-    EspService.instance.toggleActuator('pump', nextState);
-    ApiClient().updateActuatorState(newState);
+
+    // Kirim ke ESP32 (real) — kalau gagal, rollback
+    final ok = await EspService.instance.toggleActuator('pump', nextState);
+    if (!mounted) return;
+
+    if (ok) {
+      ApiClient().updateActuatorState(newState).ignore();
+      _showToast('Pompa Air ${nextState ? "ON" : "OFF"}');
+    } else {
+      widget.onUpdateActuators(oldState);
+      _showToast('ESP32 tidak terjangkau — pompa tidak berubah');
+    }
   }
 
-  void _togglePesticide() {
+  Future<void> _togglePesticide() async {
     final nextState = !widget.actuatorState.pesticideActive;
-    final newState = widget.actuatorState.copyWith(pesticideActive: nextState);
+    final oldState = widget.actuatorState;
+
+    final newState = oldState.copyWith(pesticideActive: nextState);
     widget.onUpdateActuators(newState);
-    EspService.instance.toggleActuator('pesticide', nextState);
-    ApiClient().updateActuatorState(newState);
+
+    final ok = await EspService.instance.toggleActuator('pesticide', nextState);
+    if (!mounted) return;
+
+    if (ok) {
+      ApiClient().updateActuatorState(newState).ignore();
+      _showToast('Pompa Pestisida ${nextState ? "ON" : "OFF"}');
+    } else {
+      widget.onUpdateActuators(oldState);
+      _showToast('ESP32 tidak terjangkau — pestisida tidak berubah');
+    }
   }
 
   void _toggleLaser() {
@@ -149,6 +172,17 @@ class _SensorTabViewState extends State<SensorTabView> {
     widget.onUpdateActuators(newState);
     EspService.instance.toggleActuator('led', nextState);
     ApiClient().updateActuatorState(newState);
+  }
+
+  void _showToast(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   @override

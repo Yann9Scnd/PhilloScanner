@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <HTTPClient.h>
 #include <DHT.h>
 
 // =====================================================
@@ -61,6 +62,16 @@ int soilPercent = 0;
 unsigned long lastSensorRead = 0;
 
 const unsigned long SENSOR_INTERVAL = 3000;
+
+// =====================================================
+// TELEMETRY KE LARAVEL
+// =====================================================
+
+const char* laravelUrl = "http://192.168.43.182:8000/api/telemetry";
+
+unsigned long lastTelemetryPost = 0;
+
+const unsigned long TELEMETRY_INTERVAL = 5000;
 
 
 // =====================================================
@@ -252,6 +263,61 @@ void readSensors() {
   }
 
   Serial.println("========================================");
+}
+
+
+// =====================================================
+// POST TELEMETRY KE LARAVEL
+// =====================================================
+
+void postTelemetry() {
+
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+
+  String json = "{";
+
+  json += "\"node\":\"ESP32 Node 2\"";
+  json += ",";
+
+  json += "\"temp\":";
+  json += String(temperature, 1);
+  json += ",";
+
+  json += "\"humidity\":";
+  json += String(humidity, 0);
+  json += ",";
+
+  json += "\"dist\":";
+  json += String(distance, 1);
+  json += ",";
+
+  json += "\"soil\":";
+  json += String(soilPercent);
+  json += ",";
+
+  json += "\"pumpStatus\":";
+  json += pumpState ? "\"Aktif\"" : "\"Standby\"";
+
+  json += "}";
+
+  HTTPClient http;
+  http.begin(laravelUrl);
+  http.addHeader("Content-Type", "application/json");
+
+  int code = http.POST(json);
+
+  if (code > 0) {
+    Serial.println();
+    Serial.print("[LARAVEL] Telemetry terkirim: ");
+    Serial.println(code);
+  } else {
+    Serial.println();
+    Serial.println("[LARAVEL] Gagal kirim telemetry");
+  }
+
+  http.end();
 }
 
 
@@ -729,5 +795,19 @@ void loop() {
     lastSensorRead = millis();
 
     readSensors();
+  }
+
+  // ===================================================
+  // POST TELEMETRY KE LARAVEL
+  // ===================================================
+
+  if (
+    millis() - lastTelemetryPost >=
+    TELEMETRY_INTERVAL
+  ) {
+
+    lastTelemetryPost = millis();
+
+    postTelemetry();
   }
 }
