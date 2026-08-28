@@ -443,10 +443,14 @@ class _SensorTabViewState extends State<SensorTabView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.show_chart_rounded, size: 20, color: AppColors.primary),
                         const SizedBox(width: 6),
@@ -459,6 +463,7 @@ class _SensorTabViewState extends State<SensorTabView> {
 
                     // Metric Switcher Chips
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         _ChartTabChip(
                           label: 'K. Tanah',
