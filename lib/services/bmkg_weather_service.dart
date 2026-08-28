@@ -19,67 +19,47 @@ class BmkgWeatherService {
 
   BmkgWeatherService({http.Client? client}) : _client = client ?? http.Client();
 
-  /// Daftar pilihan wilayah pertanian / daerah BMKG
+  /// Daftar pilihan wilayah BMKG — Malang & Kota Batu (daerah pengguna)
   static const List<BmkgRegionOption> presetRegions = [
     BmkgRegionOption(
-      adm4: '32.73.01.1001',
-      name: 'Sukarasa, Sukasari',
-      region: 'Kota Bandung, Jabar',
+      adm4: '35.73.05.1007',
+      name: 'Jatimulyo, Lowokwaru',
+      region: 'Kota Malang, Jatim',
     ),
     BmkgRegionOption(
-      adm4: '32.17.07.2001',
-      name: 'Lembang',
-      region: 'Bandung Barat, Jabar',
+      adm4: '35.73.04.1005',
+      name: 'Sukun',
+      region: 'Kota Malang, Jatim',
     ),
     BmkgRegionOption(
-      adm4: '32.01.01.2001',
-      name: 'Dramaga',
-      region: 'Kab. Bogor, Jabar',
+      adm4: '35.73.03.1010',
+      name: 'Cemorokandang, Kedungkandang',
+      region: 'Kota Malang, Jatim',
     ),
     BmkgRegionOption(
-      adm4: '32.05.01.2001',
-      name: 'Tarogong Kaler',
-      region: 'Kab. Garut, Jabar',
+      adm4: '35.79.01.1003',
+      name: 'Songgokerto, Batu',
+      region: 'Kota Batu, Jatim',
     ),
     BmkgRegionOption(
-      adm4: '33.29.01.2001',
-      name: 'Brebes',
-      region: 'Kab. Brebes, Jateng',
+      adm4: '35.79.02.2006',
+      name: 'Bumiaji',
+      region: 'Kota Batu, Jatim',
     ),
     BmkgRegionOption(
-      adm4: '34.04.07.2001',
-      name: 'Pakem',
-      region: 'Sleman, D.I. Yogyakarta',
+      adm4: '35.79.02.2003',
+      name: 'Tulungrejo, Bumiaji',
+      region: 'Kota Batu, Jatim',
     ),
     BmkgRegionOption(
-      adm4: '35.07.18.2001',
-      name: 'Pujon',
-      region: 'Kab. Malang, Jatim',
-    ),
-    BmkgRegionOption(
-      adm4: '35.06.01.2001',
-      name: 'Pare',
-      region: 'Kab. Kediri, Jatim',
-    ),
-    BmkgRegionOption(
-      adm4: '51.02.01.2001',
-      name: 'Bedugul / Baturiti',
-      region: 'Tabanan, Bali',
-    ),
-    BmkgRegionOption(
-      adm4: '12.71.01.1001',
-      name: 'Medan Kota',
-      region: 'Kota Medan, Sumut',
-    ),
-    BmkgRegionOption(
-      adm4: '73.71.01.1001',
-      name: 'Ujung Pandang',
-      region: 'Kota Makassar, Sulsel',
+      adm4: '35.79.03.2005',
+      name: 'Mojorejo, Junrejo',
+      region: 'Kota Batu, Jatim',
     ),
   ];
 
   /// Mengambil data cuaca terkini dari API BMKG
-  Future<BmkgWeatherModel> fetchWeather({String adm4Code = '32.73.01.1001'}) async {
+  Future<BmkgWeatherModel> fetchWeather({String adm4Code = '35.73.05.1007'}) async {
     final uri = Uri.parse('https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=$adm4Code');
 
     try {

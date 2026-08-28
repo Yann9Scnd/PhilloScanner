@@ -16,10 +16,10 @@ class BmkgLocationModel {
   factory BmkgLocationModel.fromJson(Map<String, dynamic> json) {
     return BmkgLocationModel(
       adm4: (json['adm4'] as String?) ?? '',
-      provinsi: (json['provinsi'] as String?) ?? 'Jawa Barat',
-      kotkab: (json['kotkab'] as String?) ?? 'Kota Bandung',
-      kecamatan: (json['kecamatan'] as String?) ?? 'Sukasari',
-      desa: (json['desa'] as String?) ?? 'Sukarasa',
+      provinsi: (json['provinsi'] as String?) ?? 'Jawa Timur',
+      kotkab: (json['kotkab'] as String?) ?? 'Kota Malang',
+      kecamatan: (json['kecamatan'] as String?) ?? 'Lowokwaru',
+      desa: (json['desa'] as String?) ?? 'Jatimulyo',
     );
   }
 
@@ -136,12 +136,12 @@ class BmkgWeatherModel {
   }
 
   /// Data cuaca cadangan jika offline/koneksi bermasalah
-  factory BmkgWeatherModel.mock({String adm4 = '32.73.01.1001', String desa = 'Sukarasa'}) {
+  factory BmkgWeatherModel.mock({String adm4 = '35.73.05.1007', String desa = 'Jatimulyo'}) {
     final mockLocation = BmkgLocationModel(
       adm4: adm4,
-      provinsi: 'Jawa Barat',
-      kotkab: 'Kota Bandung',
-      kecamatan: 'Sukasari',
+      provinsi: 'Jawa Timur',
+      kotkab: 'Kota Malang',
+      kecamatan: 'Lowokwaru',
       desa: desa,
     );
 

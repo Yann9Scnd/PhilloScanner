@@ -16,7 +16,7 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
   bool _isLoading = true;
   BmkgWeatherModel? _weatherData;
   bool _isMock = false;
-  String _selectedAdm4 = '32.73.01.1001';
+  String _selectedAdm4 = '35.73.05.1007';
   String _lastUpdated = '';
 
   @override
