@@ -44,54 +44,8 @@ class _DaunTabViewState extends State<DaunTabView> {
   bool _isChatLoading = false;
   final ScrollController _chatScrollController = ScrollController();
 
-  // Sampel daun dari dataset (padanan `sampleLeaves` React)
-  static const _samples = [
-    _SampleLeaf(
-      id: 'sample-cabai-1',
-      title: 'Bercak Daun Cercospora (Terdeteksi)',
-      diseaseName: 'Bercak Daun Cabai',
-      latinName: 'Cercospora capsici',
-      confidence: 94,
-      severity: 'Sedang',
-      image:
-          'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=800&auto=format&fit=crop',
-      recommendations: [
-        'Pangkas daun cabai yang berbercak parah agar spora jamur tidak tertiup angin.',
-        'Aplikasi fungisida tembaga hidroksida organik pada pagi hari.',
-        'Jaga kelembapan tanah di kisaran 60-70% via irigasi otomatis.',
-      ],
-    ),
-    _SampleLeaf(
-      id: 'sample-cabai-2',
-      title: 'Daun Cabai Sehat Optimal',
-      diseaseName: 'Daun Cabai Sehat',
-      latinName: 'Capsicum annuum (Sehat)',
-      confidence: 98,
-      severity: 'Sehat',
-      image:
-          'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
-      recommendations: [
-        'Pertahankan sistem irigasi otomatis dari Node 2 ESP32.',
-        'Berikan nutrisi Kalsium & Kalium rutin untuk memperkuat dinding sel daun.',
-        'Monitor terus visual daun lewat Node 1 ESP32-CAM.',
-      ],
-    ),
-    _SampleLeaf(
-      id: 'sample-cabai-3',
-      title: 'Virus Kuning Geminivirus',
-      diseaseName: 'Virus Kuning / Bule',
-      latinName: 'Pepper Yellow Leaf Curl Virus',
-      confidence: 91,
-      severity: 'Tinggi',
-      image:
-          'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?q=80&w=800&auto=format&fit=crop',
-      recommendations: [
-        'Pasang perangkap kuning perekat untuk membasmi kaper putih (Bemisia tabaci).',
-        'Pangkas pucuk cabai yang melengkung memangkuk ke atas.',
-        'Semprot insektisida nabati minyak mimba/serai.',
-      ],
-    ),
-  ];
+  // Data sampel dikosongkan — siap diisi data real (dataset),
+  // static const _samples dihapus; flow scan hanya via AI / upload foto.
 
   @override
   void dispose() {
@@ -117,63 +71,33 @@ class _DaunTabViewState extends State<DaunTabView> {
     );
   }
 
-  // ===== Scanner: proses scan sampel / upload foto =====
+  // ===== Scanner: proses upload foto =====
   Future<void> _runScan(
     String imageUrl, {
-    String diseaseName = '',
-    String latinName = '',
-    int confidence = 0,
-    String severity = '',
-    List<String> recommendations = const [],
     String deviceSource = 'Kamera Smartphone',
     String sector = 'Upload Foto',
   }) async {
     setState(() => _isScanning = true);
 
     ScanResultModel result;
-    final bool useAi = diseaseName.isEmpty;
-
-    if (useAi) {
-      try {
-        result = await AiService.instance.analyzeLeaf(
-          imageUrl: imageUrl,
-          deviceSource: deviceSource,
-          sector: sector,
-        );
-      } catch (e) {
-        if (mounted) {
-          setState(() => _isScanning = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(e.toString()),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-    } else {
-      await Future.delayed(const Duration(milliseconds: 1500));
-      result = ScanResultModel(
-        deviceId: deviceSource,
+    try {
+      result = await AiService.instance.analyzeLeaf(
         imageUrl: imageUrl,
-        diseaseName: diseaseName.isNotEmpty ? diseaseName : 'Bercak Daun Cercospora',
-        scientificName: latinName.isNotEmpty ? latinName : 'Cercospora capsici',
-        severity: severity.isNotEmpty ? severity : 'Sedang',
-        confidence: confidence > 0 ? confidence : 91,
-        timestamp: 'Baru saja',
-        soilMoisture: '60%',
+        deviceSource: deviceSource,
         sector: sector,
-        temperatureAtScan: 28,
-        aiRecommendations: recommendations.isNotEmpty
-            ? recommendations
-            : [
-                'Semprotkan fungisida tembaga hidroksida organik pada pagi hari.',
-                'Pangkas daun yang terinfeksi bercak untuk mencegah penyebaran spora.',
-                'Nyalakan Kipas Ventilasi untuk menurunkan kelembapan udara.',
-              ],
       );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isScanning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
     }
 
     if (!mounted) return;
@@ -393,72 +317,28 @@ class _DaunTabViewState extends State<DaunTabView> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Sample thumbnails
-                Row(
-                  children: _samples.map((sample) {
-                    return Expanded(
-                      child: Padding(
-                        padding: EdgeInsets.only(
-                            right: sample != _samples.last ? 8 : 0),
-                        child: GestureDetector(
-                          onTap: () async {
-                            await _runScan(
-                              sample.image,
-                              diseaseName: sample.diseaseName,
-                              latinName: sample.latinName,
-                              confidence: sample.confidence,
-                              severity: sample.severity,
-                              recommendations: sample.recommendations,
-                              deviceSource: 'ESP32-CAM Sektor A-01',
-                              sector: 'Greenhouse Sektor A',
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainerLowest,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
-                            ),
-                            child: Column(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    sample.image,
-                                    height: 40,
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (ctx, e, st) => Container(
-                                      height: 40,
-                                      color: AppColors.surfaceContainer,
-                                      child: const Icon(Icons.eco,
-                                          color: AppColors.primary, size: 20),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  sample.diseaseName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.labelMd(
-                                          color: AppColors.onSurface)
-                                      .copyWith(fontSize: 9, fontWeight: FontWeight.w700),
-                                ),
-                                Text(
-                                  sample.severity,
-                                  style: AppTextStyles.labelMd(
-                                          color: AppColors.outline)
-                                      .copyWith(fontSize: 8),
-                                ),
-                              ],
-                            ),
-                          ),
+                // Data sampel dikosongkan untuk diganti data real
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.outlineVariant.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.eco_rounded, color: AppColors.outline, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Belum ada data sampel. Foto daun untuk memulai analisis AI.',
+                          style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                              .copyWith(fontSize: 11),
                         ),
                       ),
-                    );
-                  }).toList(),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -928,24 +808,4 @@ class _ModeTab extends StatelessWidget {
 }
 
 // ===== Sampel Daun =====
-class _SampleLeaf {
-  final String id;
-  final String title;
-  final String diseaseName;
-  final String latinName;
-  final int confidence;
-  final String severity;
-  final String image;
-  final List<String> recommendations;
-
-  const _SampleLeaf({
-    required this.id,
-    required this.title,
-    required this.diseaseName,
-    required this.latinName,
-    required this.confidence,
-    required this.severity,
-    required this.image,
-    required this.recommendations,
-  });
-}
+// Class _SampleLeaf dihapus — data sampel dummy untuk diganti data real.

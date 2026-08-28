@@ -16,12 +16,17 @@ void main() {
     }
   });
 
-  test('SQLite dibuat, diseed, dan query berjalan (tanpa error)', () async {
+  test('SQLite dibuat, dan query berjalan (tanpa error)', () async {
     final db = await DatabaseHelper.instance.database;
 
     final scans = await db.query('scan_results');
-    expect(scans, isNotEmpty, reason: 'Scan seed harus tersimpan');
-    expect(scans.first.keys, containsAll(['sector', 'temperature_at_scan']));
+    expect(scans, isEmpty, reason: 'Tidak ada seed dummy, DB harus kosong');
+
+    final scanColumns =
+        (await db.rawQuery('PRAGMA table_info(scan_results)'))
+            .map((c) => c['name'] as String)
+            .toSet();
+    expect(scanColumns, containsAll(['sector', 'temperature_at_scan']));
 
     final sensorColumns =
         (await db.rawQuery('PRAGMA table_info(sensor_readings)'))
@@ -34,7 +39,7 @@ void main() {
   test('getAllScans + insertScan round-trip', () async {
     final helper = DatabaseHelper.instance;
     final before = await helper.getAllScans();
-    expect(before.length, 2);
+    expect(before, isEmpty, reason: 'DB kosong (dummy dihapus)');
 
     await helper.insertScan(ScanResultModel(
       deviceId: 'ESP32-CAM Test',
@@ -51,7 +56,7 @@ void main() {
     ));
 
     final after = await helper.getAllScans();
-    expect(after.length, 3);
+    expect(after.length, 1);
     expect(after.first.sector, 'Bedeng Uji');
     expect(after.first.temperatureAtScan, 29.5);
     expect(after.first.aiRecommendations.length, 2);

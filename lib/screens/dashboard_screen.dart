@@ -63,24 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ActuatorStateModel _actuatorState = ActuatorStateModel.initial();
   List<ActivityLogModel> _activities = ActivityLogModel.initialList();
   List<AppNotificationModel> _notifications = AppNotificationModel.initialList();
-  List<ScanResultModel> _savedScans = const [
-    ScanResultModel(
-      deviceId: 'Node 1: ESP32-CAM (Bedeng Barat)',
-      imageUrl:
-          'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=800&auto=format&fit=crop',
-      diseaseName: 'Bercak Daun Cabai',
-      scientificName: 'Cercospora capsici',
-      severity: 'Sedang',
-      confidence: 94,
-      timestamp: '12 Okt 2026 • 14:30 WIB',
-      soilMoisture: '64%',
-      aiRecommendations: [
-        'Semprotkan bio-fungisida tembaga hidroksida pada permukaan bawah daun cabai pada pagi hari.',
-        'Pangkas daun cabai tua di area bawah yang bersentuhan dengan tanah atau mulsa.',
-        'Nyalakan kipas ventilasi lewat Node 2 ESP32 untuk menurunkan kelembapan udara mikro.',
-      ],
-    ),
-  ];
+  List<ScanResultModel> _savedScans = const [];
 
   void _navigateToTab(int index) {
     setState(() => _currentIndex = index);

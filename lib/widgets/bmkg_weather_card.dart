@@ -15,6 +15,7 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
   final BmkgWeatherService _service = BmkgWeatherService();
   bool _isLoading = true;
   BmkgWeatherModel? _weatherData;
+  bool _isMock = false;
   String _selectedAdm4 = '32.73.01.1001';
   String _lastUpdated = '';
 
@@ -37,6 +38,7 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
     if (mounted) {
       setState(() {
         _weatherData = data;
+        _isMock = data.isMock;
         _isLoading = false;
         _lastUpdated = timeStr;
       });
@@ -156,7 +158,7 @@ class _BmkgWeatherCardState extends State<BmkgWeatherCard> {
                             const SizedBox(width: 6),
                             Flexible(
                               child: Text(
-                                'API BMKG Terhubung',
+                                _isMock ? 'Data Cadangan (Offline)' : 'API BMKG Terhubung',
                                 style: AppTextStyles.labelMd(color: Colors.white).copyWith(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 11,

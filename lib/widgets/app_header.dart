@@ -396,27 +396,10 @@ class _ProfileModal extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('Pak Mulyadi', style: AppTextStyles.titleLg(color: AppColors.onSurface)),
-                  Text('Kepala Pengelola Kebun Cabai Presisi',
+                  Text('Pengelola Kebun',
+                      style: AppTextStyles.titleLg(color: AppColors.onSurface)),
+                  Text('Akun ChiliGuard',
                       style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDCFCE7),
-                      borderRadius: BorderRadius.circular(9999),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.verified_rounded, size: 14, color: Color(0xFF16A34A)),
-                        const SizedBox(width: 4),
-                        Text('Akun Terverifikasi',
-                            style: AppTextStyles.labelMd(color: const Color(0xFF166534))
-                                .copyWith(fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -429,14 +412,13 @@ class _ProfileModal extends StatelessWidget {
               ),
               child: Column(
                 children: [
-                  _ProfileInfoRow(label: 'Lokasi Kebun', value: 'Lembang, Bandung Barat'),
+                  _ProfileInfoRow(label: 'Lokasi Kebun', value: '—'),
                   const SizedBox(height: 8),
-                  _ProfileInfoRow(label: 'Node Hardware Terhubung', value: '2 Node ESP32 (CAM & Sensor)'),
+                  _ProfileInfoRow(label: 'Node Hardware Terhubung', value: '—'),
                   const SizedBox(height: 8),
                   _ProfileInfoRow(
                       label: 'Status Server Cloud',
-                      value: 'Online (Cloud Run)',
-                      valueColor: const Color(0xFF16A34A)),
+                      value: '—'),
                 ],
               ),
             ),
@@ -464,9 +446,8 @@ class _ProfileModal extends StatelessWidget {
 class _ProfileInfoRow extends StatelessWidget {
   final String label;
   final String value;
-  final Color? valueColor;
 
-  const _ProfileInfoRow({required this.label, required this.value, this.valueColor});
+  const _ProfileInfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -477,7 +458,7 @@ class _ProfileInfoRow extends StatelessWidget {
         Flexible(
           child: Text(value,
               textAlign: TextAlign.right,
-              style: AppTextStyles.labelMd(color: valueColor ?? AppColors.onSurface)
+              style: AppTextStyles.labelMd(color: AppColors.onSurface)
                   .copyWith(fontWeight: FontWeight.w600)),
         ),
       ],

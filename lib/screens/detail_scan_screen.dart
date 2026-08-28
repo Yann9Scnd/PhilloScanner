@@ -2,42 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/chat_message_model.dart';
 import '../models/scan_result_model.dart';
+import '../services/ai_service.dart';
 import '../theme/app_theme.dart';
 
 /// Halaman Detail Hasil Scan Daun
 class DetailScanScreen extends StatefulWidget {
-  final ScanResultModel? scan;
+  final ScanResultModel scan;
 
-  const DetailScanScreen({super.key, this.scan});
+  const DetailScanScreen({super.key, required this.scan});
 
   @override
   State<DetailScanScreen> createState() => _DetailScanScreenState();
 }
 
 class _DetailScanScreenState extends State<DetailScanScreen> {
-  static const _defaultScan = ScanResultModel(
-    deviceId: 'ESP32-CAM Sektor B-04',
-    imageUrl:
-        'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=800&auto=format&fit=crop',
-    diseaseName: 'Bercak Daun',
-    scientificName: 'Cercospora capsici',
-    severity: 'Sedang',
-    confidence: 92,
-    timestamp: '12 Okt 2023 • 14:30',
-    soilMoisture: '58%',
-    aiRecommendations: [
-      'Kurangi kelembapan di sekitar area terdampak.',
-      'Buang bagian daun yang rusak parah agar tidak menular.',
-      'Berikan pupuk tambahan untuk memperkuat imun tanaman.',
-    ],
-  );
-
   final List<ChatMessageModel> _messages = [];
   final TextEditingController _chatController = TextEditingController();
   final ScrollController _chatScrollController = ScrollController();
   bool _isChatLoading = false;
 
-  ScanResultModel get _activeScan => widget.scan ?? _defaultScan;
+  ScanResultModel get _activeScan => widget.scan;
 
   @override
   void initState() {
@@ -46,7 +30,7 @@ class _DetailScanScreenState extends State<DetailScanScreen> {
       id: 'ai-intro',
       sender: 'ai',
       text:
-          'Berdasarkan hasil scan, ${_activeScan.diseaseName.toLowerCase()} ini kemungkinan disebabkan oleh jamur Cercospora. Apakah Anda ingin tahu cara pencegahan alami untuk tanaman di sekitarnya?',
+          'Deteksi: ${_activeScan.diseaseName} (Kepercayaan ${_activeScan.confidence}%). Tanyakan cara pencegahan alami atau penanganan untuk tanaman di sekitar Anda.',
       timestamp: _activeScan.timestamp,
     ));
   }
@@ -103,23 +87,14 @@ class _DetailScanScreenState extends State<DetailScanScreen> {
     });
     _scrollChatToBottom();
 
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    if (!mounted) return;
-    final q = text.toLowerCase();
-    String replyText =
-        'Lakukan pemangkasan daun terinfeksi dan jaga kelembapan tanah di angka 50-65%.';
-    if (q.contains('jamur') || q.contains('fungisida') || q.contains('bercak')) {
-      replyText =
-          'Pencegahan alami: Semprotkan ekstrak daun mimba atau kuprum tembaga organik pada pagi hari. Kurangi kelembapan udara mikro di sekitar ${_activeScan.diseaseName.toLowerCase()}.';
-    } else if (q.contains('pupuk') || q.contains('nutrisi') || q.contains('subur')) {
-      replyText =
-          'Berikan pupuk organik kaya kalium (K) untuk memperkuat dinding sel daun. Jaga kadar PPM nutrisi 1000-1200 dengan pH tanah 6.0-6.5.';
-    } else if (q.contains('irigasi') || q.contains('air') || q.contains('siram')) {
-      replyText =
-          'Untuk ${_activeScan.severity.toLowerCase()} severity ini, siram saat kelembapan tanah turun di bawah 50%. Gunakan irigasi tetes otomatis dari Node 2 ESP32.';
+    String replyText;
+    try {
+      replyText = await AiService.instance.chat(text);
+    } catch (_) {
+      replyText = 'Maaf, AI sedang tidak dapat dihubungi. Coba lagi nanti.';
     }
 
+    if (!mounted) return;
     setState(() {
       _messages.add(ChatMessageModel(
         id: 'ai-${DateTime.now().millisecondsSinceEpoch}',

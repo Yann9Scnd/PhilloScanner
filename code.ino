@@ -796,18 +796,4 @@ void loop() {
 
     readSensors();
   }
-
-  // ===================================================
-  // POST TELEMETRY KE LARAVEL
-  // ===================================================
-
-  if (
-    millis() - lastTelemetryPost >=
-    TELEMETRY_INTERVAL
-  ) {
-
-    lastTelemetryPost = millis();
-
-    postTelemetry();
-  }
 }

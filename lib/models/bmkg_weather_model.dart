@@ -82,11 +82,13 @@ class BmkgWeatherModel {
   final BmkgLocationModel location;
   final BmkgWeatherItem currentWeather;
   final List<BmkgWeatherItem> forecastList;
+  final bool isMock;
 
   const BmkgWeatherModel({
     required this.location,
     required this.currentWeather,
     required this.forecastList,
+    this.isMock = false,
   });
 
   factory BmkgWeatherModel.fromJson(Map<String, dynamic> json) {
@@ -159,6 +161,7 @@ class BmkgWeatherModel {
       location: mockLocation,
       currentWeather: mockItem,
       forecastList: const [mockItem],
+      isMock: true,
     );
   }
 }

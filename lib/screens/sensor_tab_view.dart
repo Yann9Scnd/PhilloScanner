@@ -30,9 +30,20 @@ class _SensorTabViewState extends State<SensorTabView> {
   String? _lastError;
   Timer? _autoRefreshTimer;
 
-  final List<double> _soilTrend = [52, 54, 50, 48, 65, 62, 60, 62];
-  final List<double> _tempTrend = [22, 23, 25, 29, 31, 28, 27, 28];
-  final List<double> _humidityTrend = [80, 78, 75, 70, 68, 72, 76, 74];
+  // Trend 24 jam — data dummy dihapus; diisi dari pembacaan real per refresh.
+  final List<double> _soilTrend = [];
+  final List<double> _tempTrend = [];
+  final List<double> _humidityTrend = [];
+  static const int _maxTrendPoints = 24;
+
+  void _appendTrend(SensorDataModel reading) {
+    _soilTrend.add(reading.soilMoisture);
+    if (_soilTrend.length > _maxTrendPoints) _soilTrend.removeAt(0);
+    _tempTrend.add(reading.temperature);
+    if (_tempTrend.length > _maxTrendPoints) _tempTrend.removeAt(0);
+    _humidityTrend.add(reading.airHumidity);
+    if (_humidityTrend.length > _maxTrendPoints) _humidityTrend.removeAt(0);
+  }
 
   @override
   void initState() {
@@ -73,6 +84,7 @@ class _SensorTabViewState extends State<SensorTabView> {
         timestamp: 'Langsung dari ESP32',
       );
       widget.onUpdateSensors(reading);
+      _appendTrend(reading);
 
       // Sync aktuator state langsung dari ESP32 (pompa & pestisida real)
       final espPump = (espData['pump'] as bool?) ?? false;
@@ -97,6 +109,7 @@ class _SensorTabViewState extends State<SensorTabView> {
 
         if (reading != null) {
           widget.onUpdateSensors(reading);
+          _appendTrend(reading);
           setState(() {
             _isLoading = false;
             _lastError = 'ESP32 offline, data dari server';
@@ -359,7 +372,7 @@ class _SensorTabViewState extends State<SensorTabView> {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Laser (GPIO 15) & Lampu LED (GPIO 32) aktif pada code.ino. Pompa Irigasi & Pestisida tersedia untuk firmware berikutnya.',
+                        'Pompa Irigasi (GPIO 26) & Pompa Pestisida (GPIO 27) aktif di firmware ESP32. Status di bawah diambil langsung dari perangkat.',
                         style: TextStyle(fontSize: 10, color: AppColors.outline, height: 1.4),
                       ),
                     ),
@@ -488,26 +501,39 @@ class _SensorTabViewState extends State<SensorTabView> {
                 ),
                 const SizedBox(height: 20),
 
-                // Sparkline Custom Painter
-                SizedBox(
-                  height: 100,
-                  width: double.infinity,
-                  child: CustomPaint(
-                    painter: _SparklinePainter(data: currentTrend),
+                // Sparkline Custom Painter (dari data real)
+                if (currentTrend.isEmpty)
+                  Container(
+                    height: 100,
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Belum ada data trend — tunggu pembacaan ESP32',
+                      style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                          .copyWith(fontSize: 11),
+                    ),
+                  )
+                else ...[
+                  SizedBox(
+                    height: 100,
+                    width: double.infinity,
+                    child: CustomPaint(
+                      painter: _SparklinePainter(data: currentTrend),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text('00:00', style: TextStyle(fontSize: 10, color: AppColors.outline)),
-                    Text('06:00', style: TextStyle(fontSize: 10, color: AppColors.outline)),
-                    Text('12:00', style: TextStyle(fontSize: 10, color: AppColors.outline)),
-                    Text('18:00', style: TextStyle(fontSize: 10, color: AppColors.outline)),
-                    Text('Sekarang', style: TextStyle(fontSize: 10, color: AppColors.outline)),
-                  ],
-                ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text('Data terakhir', style: TextStyle(fontSize: 10, color: AppColors.outline)),
+                      Text('Sekarang', style: TextStyle(fontSize: 10, color: AppColors.outline)),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -544,7 +570,15 @@ class _SensorTabViewState extends State<SensorTabView> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 20),
+                      Icon(
+                        _lastError == null
+                            ? Icons.check_circle_rounded
+                            : Icons.cancel_rounded,
+                        color: _lastError == null
+                            ? const Color(0xFF4CAF50)
+                            : const Color(0xFFEF4444),
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -566,13 +600,18 @@ class _SensorTabViewState extends State<SensorTabView> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE6F4EA),
+                          color: _lastError == null
+                              ? const Color(0xFFE6F4EA)
+                              : const Color(0xFFFDECEC),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: const Text(
-                          'Aktif (30 FPS)',
+                        child: Text(
+                          _lastError == null ? 'Online' : 'Offline',
                           style: TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981)),
+                              fontSize: 10, fontWeight: FontWeight.bold,
+                              color: _lastError == null
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFEF4444)),
                         ),
                       ),
                     ],
@@ -589,14 +628,14 @@ class _SensorTabViewState extends State<SensorTabView> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.check_circle_rounded, color: Color(0xFF4CAF50), size: 20),
+                      const Icon(Icons.videocam_off_rounded, color: Color(0xFF94A3B8), size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Node 2: ESP32-CAM (menyusul)',
+                              'Node 2: ESP32-CAM (belum terpasang)',
                               style: AppTextStyles.labelLg(color: AppColors.onSurfaceVariant)
                                   .copyWith(fontWeight: FontWeight.w600, fontSize: 13),
                             ),
@@ -611,13 +650,14 @@ class _SensorTabViewState extends State<SensorTabView> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: const Color(0xFFF1F5F9),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Text(
-                          'Telemetri OK',
+                          'Belum Aktif',
                           style: TextStyle(
-                              fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue),
+                              fontSize: 10, fontWeight: FontWeight.bold,
+                              color: Color(0xFF94A3B8)),
                         ),
                       ),
                     ],

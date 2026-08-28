@@ -148,49 +148,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // Seed data awal (scan ESP32-CAM)
-    await _seedInitialData(db);
-  }
-
-  Future<void> _seedInitialData(Database db) async {
-    // Seed Initial ESP32 Scan Results
-    final initialScans = [
-      const ScanResultModel(
-        deviceId: 'ESP32-CAM Sektor B-04',
-        imageUrl:
-            'https://images.unsplash.com/photo-1592417817098-8f3d6eb231fc?q=80&w=800&auto=format&fit=crop',
-        diseaseName: 'Bercak Daun',
-        scientificName: 'Cercospora capsici',
-        severity: 'Sedang',
-        confidence: 92,
-        timestamp: '12 Okt 2023 • 14:30',
-        soilMoisture: '58%',
-        aiRecommendations: [
-          'Kurangi kelembapan di sekitar area terdampak.',
-          'Buang bagian daun yang rusak parah agar tidak menular.',
-          'Berikan pupuk tambahan untuk memperkuat imun tanaman.'
-        ],
-      ),
-      const ScanResultModel(
-        deviceId: 'ESP32-CAM Sektor A-01',
-        imageUrl:
-            'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop',
-        diseaseName: 'Karat Daun',
-        scientificName: 'Puccinia sorghi',
-        severity: 'Rendah',
-        confidence: 88,
-        timestamp: '12 Okt 2023 • 11:15',
-        soilMoisture: '62%',
-        aiRecommendations: [
-          'Semprotkan fungisida berbasis tembaga organik.',
-          'Jaga sirkulasi udara antar tanaman.',
-        ],
-      ),
-    ];
-
-    for (var scan in initialScans) {
-      await db.insert('scan_results', scan.toMap());
-    }
+    // Seed data dummy dihapus — DB kosong, siap diisi data real.
   }
 
   Future<int> insertScan(ScanResultModel scan) async {

@@ -25,17 +25,8 @@ class _KameraTabViewState extends State<KameraTabView> {
   bool _isAnalyzing = false;
   static const bool _isCameraOnline = false;
 
-  static const Map<String, String> _streamImages = {
-    'center': 'https://images.unsplash.com/photo-1592417817098-8f3d6eb23659?auto=format&fit=crop&w=800&q=80',
-    'left': 'https://images.unsplash.com/photo-1530836369250-ef72a3f5cda8?auto=format&fit=crop&w=800&q=80',
-    'right': 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=800&q=80',
-  };
-
-  String get _activeStreamUrl {
-    if (_baseAngle < 60) return _streamImages['left']!;
-    if (_baseAngle > 120) return _streamImages['right']!;
-    return _streamImages['center']!;
-  }
+  // Stream webcam real dari ESP32-CAM (MJPEG). Tidak ada gambar Unsplash dummy.
+  String get _activeStreamUrl => _espService.streamUrl;
 
   void _triggerToast(String message, {bool success = true}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -114,8 +105,6 @@ class _KameraTabViewState extends State<KameraTabView> {
         imageUrl: _activeStreamUrl,
         deviceSource: 'Node 1: ESP32-CAM (Bedeng Barat)',
         sector: 'Greenhouse Sektor A',
-        soilMoisture: '64%',
-        temperatureAtScan: 27.5,
       );
     } catch (e) {
       if (mounted) {
