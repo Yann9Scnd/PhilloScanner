@@ -1,9 +1,9 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:chiliguard/database/database_helper.dart';
-import 'package:chiliguard/models/scan_result_model.dart';
-import 'package:chiliguard/models/sensor_data_model.dart';
+import 'package:phylloscanner/database/database_helper.dart';
+import 'package:phylloscanner/models/scan_result_model.dart';
+import 'package:phylloscanner/models/sensor_data_model.dart';
 
 void main() {
   setUpAll(() async {

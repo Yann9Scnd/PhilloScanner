@@ -1,4 +1,4 @@
-package com.example.chiliguard
+package com.example.phylloscanner
 
 import io.flutter.embedding.android.FlutterActivity
 

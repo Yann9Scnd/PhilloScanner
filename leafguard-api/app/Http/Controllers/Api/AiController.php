@@ -66,7 +66,7 @@ class AiController extends Controller
             ]);
         }
 
-        $systemPrompt = "Kamu adalah asisten AI ahli pertanian cabai (Capsicum annuum) bernama ChiliGuard AI.
+        $systemPrompt = "Kamu adalah asisten AI ahli pertanian cabai (Capsicum annuum) bernama Phylloscanner AI.
 Kamu membantu petani cabai dengan pertanyaan tentang:
 - Penyakit daun cabai (Cercospora, Antraknosa, Keriting Daun, Bule/Layu Virus, dll)
 - Hama dan pengendaliannya

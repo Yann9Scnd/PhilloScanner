@@ -1,6 +1,6 @@
-# ChiliGuard — Rencana Pengembangan
+﻿# Phylloscanner — Rencana Pengembangan
 
-## Status Saat Ini (26 Agustus 2026)
+## Status Saat Ini (28 Agustus 2026)
 
 ### Sudah Berfungsi
 - Sensor tab real-time → baca LANGSUNG dari ESP32 `/status` setiap 5 detik (sama dengan serial monitor)
@@ -14,6 +14,11 @@
 - AI Chat via OpenRouter (backend call, bukan lokal)
 - AI Scan foto via OpenRouter (backend call)
 - Pull-to-refresh di sensor tab
+- **ML Scan daun OFFLINE** via TFLite on-device (Model Lokal) — SELESAI (28/8)
+  - Model `model_daun_cabai.h5` → `.tflite` int8 (2.6MB), akurasi test 78%
+  - `lib/ml/` (4 file) + `assets/models/` + deps `flutter_litert`, `image`
+  - `daun_tab_view.dart` → pilihan "Model Lokal (Offline)" vs "AI Cloud (Gemini)"
+  - `flutter analyze` bersih, `flutter build apk --debug` berhasil
 
 ### Belum Berfungsi / Placeholder
 - Upload foto AI → model OpenRouter free tidak reliable (rate limit 429, response kosong)
@@ -25,13 +30,13 @@
 - `temperatureAtScan` dan `soilMoisture` dikirim ke AI tapi tidak dipakai di prompt
 - Save ke server = fire-and-forget, error di-swallow
 - Tidak ada validasi ukuran gambar sebelum upload
-- Tidak ada ML offline (semua tergantung internet)
 
 ---
 
 ## Rencana Perbaikan — 27 Agustus 2026
 
 ### Pagi: Fix Upload Foto AI
+
 
 1. **Ganti model OpenRouter default** → `google/gemma-4-31b-it:free` atau tambah fallback chain
 2. **Fix DetailScanScreen:**
@@ -43,80 +48,114 @@
 
 ### Sore: Setup ML Offline untuk Deteksi Bercak Daun
 
+#### ✅ Status: SELESAI (28 Agustus 2026)
+
+Model lokal sudah berhasil dikonversi & diintegrasikan **on-device di HP** (offline, tanpa AI cloud).
+
+**Model:** `model_daun_cabai.h5` (Keras, 2.26M params)
+- Input: `(None, 224, 224, 3)` RGB
+- Output: 5 kelas → `healthy`, `leaf curl`, `leaf spot`, `whitefly`, `yellowish`
+- Dikonversi ke TFLite int8: `assets/models/model_daun_cabai.tflite` (**2.6 MB**)
+
+**Akurasi (TFLite, test set 50 gambar): 78%**
+| Kelas | Akurasi |
+|-------|---------|
+| healthy | 70% |
+| leaf curl | 90% |
+| leaf spot | 100% |
+| whitefly | 60% |
+| yellowish | 70% |
+
 #### Arsitektur
 ```
 Upload Foto
     ↓
-[ML TFLite di HP] → Deteksi bercak (offline, 0.1s)
-    ↓
-Hasil: "Bercak terdeteksi, confidence 87%"
+[ML TFLite di HP] → klasifikasi (offline, ~ms)
     ↓
 [Pilihan user]
-├── Lihat detail → Tampilkan hasil ML langsung
-└── Analisis AI → Kirim foto ke Laravel → OpenRouter → Rekomendasi lengkap
+├── Model Lokal (Offline) → TFLite on-device → hasil + rekomendasi lokal
+└── AI Cloud (Gemini) → Laravel → OpenRouter → rekomendasi lengkap
 ```
 
-#### Yang Perlu Dibuat
-
-**Package Flutter:**
-- `flutter_litert: ^3.8.0` (TFLite interpreter, auto-bundled native)
-- `image: ^4.5.2` (preprocessing: resize, normalize)
-
-**Struktur File Baru:**
+#### File Baru
 ```
-chiliguard/
-  assets/
-    models/
-      chili_classifier.tflite    # Model TFLite (~3-5MB)
-      chili_labels.txt           # Label: Cercospora, Antraknosa, Bacterial Spot, Sehat
-  lib/
-    ml/
-      leaf_classifier.dart       # Load model + inference
-      image_preprocessor.dart    # Resize 224x224 + normalize [0,1]
-      classification_result.dart # Model hasil klasifikasi
+assets/
+  models/
+    model_daun_cabai.tflite     # Model TFLite int8 (2.6 MB)
+    chili_classifier.txt        # 5 label (urutan = indeks output)
+lib/
+  ml/
+    leaf_classifier.dart        # Load model + inference (Offline)
+    image_preprocessor.dart     # Resize 224x224 → uint8 RGB
+    classification_result.dart  # Hasil klasifikasi
+    chili_disease_info.dart     # Metadata label → nama/severity/rekomendasi BI
 ```
 
-**Modifikasi File:**
-- `pubspec.yaml` → tambah dependencies + assets
-- `ai_service.dart` → tambah path on-device (`useOnDevice` param)
-- `daun_tab_view.dart` → pilihan "Scan Offline" vs "Analisis AI"
-- `main.dart` → preload model saat startup
+**Modifikasi:**
+- `pubspec.yaml` → tambah `flutter_litert: ^3.8.0`, `image: ^4.9.2` + `assets/models/`
+- `daun_tab_view.dart` → `_pickAndScanImage` pilih "Model Lokal (Offline)" vs "AI Cloud"; tambah `_runOfflineScan`
 
-**Spesifikasi Model:**
-- Input: 224x224x3 RGB, normalisasi [0.0, 1.0]
-- Output: 4 kelas (Cercospora, Antraknosa, Bacterial Spot, Sehat)
-- Target ukuran: < 5MB (quantized int8)
-- Target inference: < 100ms di HP Android
-- MinSDK: API 21+ (Android 5.0)
+**Cara konversi ulang model** (bila `.h5` berubah):
+```powershell
+python C:\Users\ADMIN\AppData\Local\Temp\opencode\convert_tflite.py
+```
+(Catatan: model `.h5` pakai custom `Dense` → butuh `custom_objects={'Dense': FixedDense}` saat load di script.)
 
 #### Dataset yang Dibutuhkan
-- Minimal 100 gambar per kelas (4 kelas = 400 gambar minimum)
-- Resolusi asli bebas, akan di-resize ke 224x224
-- Augmentasi: flip, rotate, brightness shift, crop
-- Sumber: Google Images, PlantVillage dataset, foto sendiri
+- Dataset aktual: `dataset_daun_cabai.zip` (5 kelas × train/test/val). Sudah dipakai validasi.
+- `CLASS_NAMES` di `app.py` = 5 kelas yang sama dengan label TFLite.
 
 ---
 
-## Checklist Besok
+## Checklist Besok (29 Agustus 2026)
 
-- [ ] **URGENT: Download & install NDK 28.2.13676358**
-  Folder `C:\Users\ADMIN\AppData\Local\Android\Sdk\ndk\28.2.13676358` tidak sengaja terhapus.
-  Tanpa NDK, `flutter run` ke HP gagal. Cara install:
-  ```
-  sdkmanager "ndk;28.2.13676358"
-  ```
-  Atau download manual dari: https://dl.google.com/android/repository/android-ndk-r28c-windows.zip (~1.1GB)
-  Ekstrak ke `C:\Users\ADMIN\AppData\Local\Android\Sdk\ndk\28.2.13676358\`
-- [ ] Fix model OpenRouter (ganti/tambah fallback)
-- [ ] Fix DetailScanScreen chat → pakai AI API
-- [ ] Fix DetailScanScreen save → panggil callback
-- [ ] Fix DetailScanScreen greeting → dinamis
-- [ ] Tambah kompresi gambar upload
-- [ ] Install `flutter_litert` + `image` package
-- [ ] Buat `lib/ml/` module
-- [ ] Buat `assets/models/` directory
-- [ ] Mulai kumpulkan dataset bercak daun
+### A. Uji / Verifikasi ML Offline (prioritas karena baru selesai)
+- [ ] Jalankan app (Chrome + HP Android via USB) → uji scan offline "Model Lokal"
+- [ ] Pastikan model TFLite termuat & hasil klasifikasi tampil (nama penyakit + confidence)
+- [ ] Cek akurasi manual dengan foto daun asli
+- [ ] (Opsional) Preload model saat startup di `main.dart` agar scan pertama tidak lama
 
+### B. Fix Upload Foto AI
+- [ ] Ganti model OpenRouter default → `google/gemma-4-31b-it:free` atau tambah fallback chain
+- [ ] Optimasi gambar upload → kompres sebelum kirim ke backend (max 800KB base64)
+- [ ] Pakai `temperatureAtScan` & `soilMoisture` di prompt AI
+- [ ] Hidupkan `/predict` di `app.py` sekarang tensorflow sudah terinstal (ML_AVAILABLE=True)
+  - Jalankan validasi silang: hasil FastAPI `/predict` vs TFLite on-device
+
+### C. Fix DetailScanScreen
+- [ ] Chat → ganti keyword lokal dengan `AiService.instance.chat()`
+- [ ] Tombol Simpan → panggil `onSaveToHistory` callback ke DashboardScreen
+- [ ] AI greeting → gunakan nama disease dari scan result, bukan hardcoded "Cercospora"
+
+### D. Kamera / ESP32
+- [ ] Kamera tab: hidupkan `_isCameraOnline` (probe ESP32) — bukan hardcoded false
+- [ ] Flash toggle → kirim ke ESP32 (bukan UI-only)
+- [ ] Stream kamera → ganti dari gambar Unsplash statis
+
+### E. Backend / Data
+- [ ] Save ke server → tambah error handling (bukan fire-and-forget)
+- [ ] Validasi ukuran gambar sebelum upload
+- [ ] Update model jika akurasi di bawah target → konversi ulang:
+  ```
+  python C:\Users\ADMIN\AppData\Local\Temp\opencode\convert_tflite.py
+  ```
+
+---
+## Log Harian
+
+### 28 Agustus 2026 — ML Scan Daun OFFLINE ✅
+- Instal `tensorflow-cpu 2.21` + `keras 3.12` (untuk konversi & validasi)
+- Verifikasi `model_daun_cabai.h5`: input 224x224x3, output 5 kelas (sesuai CLASS_NAMES), 2.26M params
+- Konversi → TFLite int8: `assets/models/model_daun_cabai.tflite` (24MB → **2.6MB**)
+- Buat `assets/models/chili_classifier.txt` (5 label, urutan = indeks output)
+- Tambah dep: `flutter_litert ^3.8.0`, `image ^4.9.2` + `assets/models/`
+- Buat modul `lib/ml/`: `leaf_classifier.dart`, `image_preprocessor.dart`, `classification_result.dart`, `chili_disease_info.dart`
+- Tambah scan offline di `daun_tab_view.dart` (pilih Model Lokal vs AI Cloud)
+- Validasi akurasi TFLite (test, 50 gambar): **78%** (healthy 70, leaf curl 90, leaf spot 100, whitefly 60, yellowish 70)
+- `flutter analyze` → no issues; `flutter build apk --debug` → sukses
+- **Fix Gradle OOM**: heap `-Xmx8G → -Xmx3G` + `org.gradle.daemon=false` di `android/gradle.properties` (RAM laptop hanya 7.6GB, daemon -Xmx8G bikin crash)
+
+---
 ## Setup Backend untuk Development (26 Agustus 2026)
 
 ### Port Allocation

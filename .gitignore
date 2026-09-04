@@ -43,3 +43,27 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ═══════════════════════════════════════════════════════
+# SENSITIVE / SECRET — jangan di-push
+# ═══════════════════════════════════════════════════════
+
+# Environment & API keys
+.env
+.env.*
+!.env.example
+
+# ML model & dataset (file besar)
+*.h5
+*.hdf5
+*.tflite
+*.zip
+assets/models/
+
+# Upload test
+upload-test/
+
+# Editor config personal
+.vscode/
+
+# ═══════════════════════════════════════════════════════

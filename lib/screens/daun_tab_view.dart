@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../ml/chili_disease_info.dart';
+import '../ml/classification_result.dart';
+import '../ml/image_preprocessor.dart';
+import '../ml/leaf_classifier.dart';
 import '../models/chat_message_model.dart';
 import '../models/scan_result_model.dart';
 import '../services/ai_service.dart';
@@ -71,44 +76,6 @@ class _DaunTabViewState extends State<DaunTabView> {
     );
   }
 
-  // ===== Scanner: proses upload foto =====
-  Future<void> _runScan(
-    String imageUrl, {
-    String deviceSource = 'Kamera Smartphone',
-    String sector = 'Upload Foto',
-  }) async {
-    setState(() => _isScanning = true);
-
-    ScanResultModel result;
-    try {
-      result = await AiService.instance.analyzeLeaf(
-        imageUrl: imageUrl,
-        deviceSource: deviceSource,
-        sector: sector,
-      );
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isScanning = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-      return;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _scanResult = result;
-      _isScanning = false;
-      _activeSubMode = 0;
-    });
-    _showToast('Hasil Scan: ${result.diseaseName}');
-  }
-
   Future<void> _pickAndScanImage() async {
     try {
       final picked = await ImagePicker().pickImage(
@@ -119,15 +86,73 @@ class _DaunTabViewState extends State<DaunTabView> {
       );
       if (picked == null || !mounted) return;
       final bytes = await picked.readAsBytes();
-      final base64Str = base64Encode(bytes);
-      final dataUrl = 'data:image/jpeg;base64,$base64Str';
-      await _runScan(dataUrl, deviceSource: 'Kamera Smartphone', sector: 'Upload Foto Galeri');
-    } catch (_) {
+
+      if (!mounted) return;
+      await _runOfflineScan(bytes, sector: 'Upload Foto Galeri');
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Tidak dapat membuka galeri. Gunakan sampel daun di bawah ini.'),
             behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Analisis on-device via model TFLite (offline, tanpa internet).
+  Future<void> _runOfflineScan(
+    List<int> bytes, {
+    String deviceSource = 'Kamera Smartphone',
+    String sector = 'Upload Foto',
+  }) async {
+    setState(() => _isScanning = true);
+
+    final classifier = LeafClassifier.instance;
+    try {
+      if (!classifier.isReady) {
+        await classifier.load();
+      }
+      final rgb = ImagePreprocessor.preprocess(Uint8List.fromList(bytes));
+      final LeafClassification result = classifier.classify(rgb);
+
+      final info = chiliDiseaseInfoByLabel(result.label);
+      final diseaseName =
+          info?.diseaseName ?? result.label.toUpperCase();
+      final scientificName = info?.scientificName ?? '-';
+      final severity = info?.severity ?? 'Sedang';
+      final recommendations = info?.recommendations ??
+          ['Tidak ada rekomendasi khusus untuk temuan ini.'];
+
+      final scan = ScanResultModel(
+        deviceId: deviceSource,
+        imageUrl: 'data:image/jpeg;base64,${base64Encode(bytes)}',
+        diseaseName: diseaseName,
+        scientificName: scientificName,
+        severity: severity,
+        confidence: (result.confidence * 100).round(),
+        timestamp: 'Baru saja',
+        soilMoisture: '-',
+        sector: sector,
+        aiRecommendations: recommendations,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _scanResult = scan;
+        _isScanning = false;
+        _activeSubMode = 0;
+      });
+      _showToast('Hasil Scan: ${scan.diseaseName}');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isScanning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal analisis offline: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -208,7 +233,7 @@ class _DaunTabViewState extends State<DaunTabView> {
                 _ModeTab(
                   icon: Icons.auto_awesome_rounded,
                   iconColor: const Color(0xFFF59E0B),
-                  label: 'Scan & Diagnosa AI',
+                  label: 'Scan & Deteksi Daun',
                   isActive: _activeSubMode == 0,
                   onTap: () => setState(() => _activeSubMode = 0),
                 ),
@@ -332,7 +357,7 @@ class _DaunTabViewState extends State<DaunTabView> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'Belum ada data sampel. Foto daun untuk memulai analisis AI.',
+                          'Belum ada data sampel. Foto daun untuk memulai deteksi model lokal.',
                           style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
                               .copyWith(fontSize: 11),
                         ),
@@ -354,7 +379,7 @@ class _DaunTabViewState extends State<DaunTabView> {
                 children: [
                   CircularProgressIndicator(color: AppColors.primary),
                   SizedBox(height: 16),
-                  Text('Menganalisis daun via Gemini AI...',
+                  Text('Menganalisis daun...',
                       style: TextStyle(color: AppColors.onSurfaceVariant, fontSize: 12)),
                 ],
               ),
@@ -428,7 +453,7 @@ class _DaunTabViewState extends State<DaunTabView> {
                                   const Icon(Icons.auto_awesome_rounded,
                                       size: 12, color: Colors.black),
                                   const SizedBox(width: 4),
-                                  Text('${scan.confidence}% AKURASI AI',
+                                  Text('${scan.confidence}% AKURASI MODEL',
                                       style: const TextStyle(
                                           color: Colors.black,
                                           fontSize: 10,
@@ -488,7 +513,7 @@ class _DaunTabViewState extends State<DaunTabView> {
                             const Icon(Icons.shield_rounded,
                                 size: 18, color: AppColors.primary),
                             const SizedBox(width: 6),
-                            Text('REKOMENDASI PENANGANAN AI',
+                            Text('REKOMENDASI PENANGANAN',
                                 style: AppTextStyles.labelMd(color: AppColors.primary)
                                     .copyWith(letterSpacing: 0.8, fontWeight: FontWeight.w700)),
                           ],

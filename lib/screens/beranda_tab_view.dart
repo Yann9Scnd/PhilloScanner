@@ -109,12 +109,17 @@ class _BerandaTabViewState extends State<BerandaTabView> {
 
     return QuickStatCard(
       icon: Icons.power_settings_new_rounded,
-      iconBgColor: const Color(0x1A003B58),
+      iconBgColor: const Color(0xFFD6F2FE),
+      iconGradient: const LinearGradient(
+        colors: [Color(0xFFD6F2FE), Color(0xFFA8E8F9)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
       iconColor: AppColors.primary,
       label: 'Aktuator Aktif',
       value: '${active.length}/4',
       subtitle: anyActive ? active.join(' • ') : 'Semua standby',
-      subtitleColor: anyActive ? const Color(0xFF16A34A) : null,
+      subtitleColor: anyActive ? const Color(0xFF10B981) : null,
     );
   }
 
@@ -141,7 +146,8 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                       children: [
                         Flexible(
                           child: Text('Halo, Petani!',
-                              style: AppTextStyles.headlineSm(color: AppColors.onSurface),
+                              style: AppTextStyles.headlineSm(color: AppColors.primary)
+                                  .copyWith(fontWeight: FontWeight.w900),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                         ),
@@ -150,7 +156,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                           width: 10,
                           height: 10,
                           decoration: const BoxDecoration(
-                            color: Color(0xFF4CAF50),
+                            color: Color(0xFF10B981),
                             shape: BoxShape.circle,
                           ),
                         ),
@@ -177,7 +183,8 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                               style: AppTextStyles.labelMd(
                                   color: _isOnline
                                       ? AppColors.onSurfaceVariant
-                                      : AppColors.outline),
+                                      : AppColors.outline)
+                                  .copyWith(fontWeight: FontWeight.w700),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                         ),
@@ -198,16 +205,16 @@ class _BerandaTabViewState extends State<BerandaTabView> {
           Container(
             height: 208,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 10,
                     offset: const Offset(0, 4)),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -229,8 +236,8 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            AppColors.primary.withValues(alpha: 0.40),
-                            AppColors.primary.withValues(alpha: 0.95),
+                            const Color(0xFF002B40).withValues(alpha: 0.50),
+                            const Color(0xFF00537A).withValues(alpha: 0.96),
                           ],
                         ),
                       ),
@@ -244,19 +251,29 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('LOKASI UTAMA',
-                            style: AppTextStyles.labelMd(color: AppColors.primaryFixedDim)
-                                .copyWith(letterSpacing: 1.2, fontWeight: FontWeight.w600)),
+                            style: AppTextStyles.labelMd(color: AppColors.tertiaryFixed)
+                                .copyWith(letterSpacing: 1.2, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 4),
                         Text(
                           selectedNode?.name ?? 'Belum ada ESP32',
-                          style: AppTextStyles.headlineSm(color: AppColors.onPrimary),
+                          style: AppTextStyles.headlineSm(color: AppColors.onPrimary)
+                              .copyWith(fontWeight: FontWeight.w900),
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                           decoration: BoxDecoration(
-                            color: AppColors.tertiaryContainer.withValues(alpha: 0.90),
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00537A), Color(0xFF0076AC)],
+                            ),
+                            border: Border.all(color: AppColors.tertiary.withValues(alpha: 0.6)),
                             borderRadius: BorderRadius.circular(9999),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 4,
+                              )
+                            ],
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -266,18 +283,16 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                                     ? Icons.check_circle_rounded
                                     : Icons.help_outline_rounded,
                                 size: 16,
-                                color: _isOnline
-                                    ? AppColors.tertiaryFixed
-                                    : AppColors.tertiaryFixed,
+                                color: AppColors.tertiary,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
                                   _isOnline
                                       ? '${nodes.length} Node Aktif'
                                       : 'Menunggu koneksi...',
-                                  style: AppTextStyles.labelMd(color: AppColors.tertiaryFixed)
-                                      .copyWith(fontWeight: FontWeight.w500, fontSize: 11),
+                                  style: AppTextStyles.labelMd(color: AppColors.tertiary)
+                                      .copyWith(fontWeight: FontWeight.w800, fontSize: 11),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -300,23 +315,34 @@ class _BerandaTabViewState extends State<BerandaTabView> {
               Expanded(
                 child: QuickStatCard(
                   icon: Icons.water_drop_outlined,
-                  iconBgColor: const Color(0x1A003B58),
+                  iconBgColor: const Color(0xFFE0F7FE),
+                  iconGradient: const LinearGradient(
+                    colors: [Color(0xFFE0F7FE), Color(0xFFBAE6FD)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   iconColor: AppColors.primary,
                   label: 'Kelembapan Tanah',
                   value: '${_sensorData.soilMoisture.round()}%',
                   subtitle: 'Optimal',
-                  subtitleColor: const Color(0xFF16A34A),
+                  subtitleColor: const Color(0xFF10B981),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: QuickStatCard(
-                  icon: Icons.thermostat,
-                  iconBgColor: const Color(0x1A835500),
-                  iconColor: AppColors.secondary,
+                  icon: Icons.thermostat_rounded,
+                  iconBgColor: const Color(0xFFFEF3C7),
+                  iconGradient: const LinearGradient(
+                    colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  iconColor: const Color(0xFFD97706),
                   label: 'Suhu Udara',
                   value: '${_sensorData.temperature.round()}°C',
                   subtitle: 'Ideal 24-30°',
+                  subtitleColor: const Color(0xFFD97706),
                 ),
               ),
             ],
@@ -329,7 +355,12 @@ class _BerandaTabViewState extends State<BerandaTabView> {
               Expanded(
                 child: QuickStatCard(
                   icon: Icons.document_scanner_rounded,
-                  iconBgColor: AppColors.error.withValues(alpha: 0.10),
+                  iconBgColor: const Color(0xFFFEE2E2),
+                  iconGradient: const LinearGradient(
+                    colors: [Color(0xFFFEE2E2), Color(0xFFFECACA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   iconColor: AppColors.error,
                   label: 'Scan Hari Ini',
                   value: '$_todayScanCount',
@@ -337,7 +368,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                       ? 'Hasil deteksi AI'
                       : 'Belum ada scan',
                   subtitleColor:
-                      _todayScanCount > 0 ? const Color(0xFF16A34A) : null,
+                      _todayScanCount > 0 ? const Color(0xFF10B981) : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -348,21 +379,44 @@ class _BerandaTabViewState extends State<BerandaTabView> {
 
           // Panduan Penggunaan Banner
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppColors.secondaryContainer,
-              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFFFFF3D6), Color(0xFFFFE7BA)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFF5A201).withValues(alpha: 0.50)),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFF5A201).withValues(alpha: 0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.tertiaryContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00537A), Color(0xFF0076AC)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF00537A).withValues(alpha: 0.30),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      )
+                    ],
                   ),
-                  child: const Icon(Icons.menu_book_rounded, color: AppColors.tertiaryFixed, size: 24),
+                  child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -371,13 +425,13 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                     children: [
                       Text(
                         'Panduan Aplikasi',
-                        style: AppTextStyles.labelLg(color: AppColors.onSurface)
-                            .copyWith(fontWeight: FontWeight.w700),
+                        style: AppTextStyles.labelLg(color: const Color(0xFF633F00))
+                            .copyWith(fontWeight: FontWeight.w900),
                       ),
                       Text(
                         'Cara koneksi ESP & memakai fitur',
-                        style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                            .copyWith(fontSize: 11),
+                        style: AppTextStyles.labelMd(color: const Color(0xFF8A5A00))
+                            .copyWith(fontSize: 11, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -385,12 +439,13 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                 ElevatedButton(
                   onPressed: () => AppGuideDialog.show(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.tertiaryFixed,
-                    foregroundColor: AppColors.background,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 3,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Baca', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  child: const Text('Baca', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                 ),
               ],
             ),
@@ -407,7 +462,8 @@ class _BerandaTabViewState extends State<BerandaTabView> {
             children: [
               Expanded(
                 child: Text('Aktivitas Terakhir',
-                    style: AppTextStyles.titleMd(color: AppColors.onSurface),
+                    style: AppTextStyles.titleMd(color: AppColors.onSurface)
+                        .copyWith(fontWeight: FontWeight.w800),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ),
@@ -415,7 +471,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                 onPressed: () => widget.onNavigateToTab(4), // Tab Riwayat
                 child: Text('Lihat Semua',
                     style: AppTextStyles.labelLg(color: AppColors.primary)
-                        .copyWith(fontWeight: FontWeight.w600)),
+                        .copyWith(fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -446,10 +502,10 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                           ? AppColors.error
                           : AppColors.secondary,
                   iconBgColor: act.type == 'watering'
-                      ? const Color(0x1A003B58)
+                      ? AppColors.primary.withValues(alpha: 0.10)
                       : act.type == 'scan_alert'
                           ? AppColors.error.withValues(alpha: 0.10)
-                          : AppColors.secondary.withValues(alpha: 0.10),
+                          : AppColors.secondary.withValues(alpha: 0.12),
                   title: act.title,
                   subtitle: '${act.subtitle} • ${act.timestamp}',
                   hasDivider: act != widget.activities.take(3).last,
@@ -514,10 +570,24 @@ class _BerandaTabViewState extends State<BerandaTabView> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary
-                    : AppColors.surfaceContainerLow,
+                gradient: isSelected
+                    ? const LinearGradient(
+                        colors: [Color(0xFF00537A), Color(0xFF0076AC)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isSelected ? null : AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF00537A).withValues(alpha: 0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        )
+                      ]
+                    : null,
                 border: Border.all(
                   color: isSelected
                       ? AppColors.primary
@@ -538,7 +608,7 @@ class _BerandaTabViewState extends State<BerandaTabView> {
                   Text(
                     node.name,
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                       fontSize: 12,
                       color: isSelected ? Colors.white : AppColors.onSurface,
                     ),

@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:chiliguard/screens/dashboard_screen.dart';
+import 'package:phylloscanner/screens/dashboard_screen.dart';
 
 void main() {
   const sizes = <Size>[Size(390, 844), Size(320, 568), Size(412, 915), Size(800, 600)];

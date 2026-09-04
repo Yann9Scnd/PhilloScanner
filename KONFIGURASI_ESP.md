@@ -1,4 +1,4 @@
-# Konfigurasi ESP32 & Integrasi Telemetri (ChiliGuard)
+﻿# Konfigurasi ESP32 & Integrasi Telemetri (Phylloscanner)
 
 Dokumen ini mencatat konfigurasi firmware dan alur data sensor ESP32 menuju
 aplikasi Flutter. Firmware otoritatif node sensor adalah `code.ino` (root repo);

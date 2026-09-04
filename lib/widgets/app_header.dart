@@ -91,7 +91,8 @@ class _AppHeaderState extends State<AppHeader> {
               children: [
                 Text(
                   'PhylloScanner',
-                  style: AppTextStyles.titleMd(color: AppColors.primary),
+                  style: AppTextStyles.titleMd(color: AppColors.primary)
+                      .copyWith(fontWeight: FontWeight.w800),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -101,7 +102,7 @@ class _AppHeaderState extends State<AppHeader> {
                       width: 6,
                       height: 6,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF4CAF50),
+                        color: Color(0xFF10B981),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -110,7 +111,7 @@ class _AppHeaderState extends State<AppHeader> {
                       child: Text(
                         'Smart Greenhouse v2.4',
                         style: AppTextStyles.labelMd(color: AppColors.outline)
-                            .copyWith(fontSize: 10),
+                            .copyWith(fontSize: 10, fontWeight: FontWeight.w600),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -126,22 +127,33 @@ class _AppHeaderState extends State<AppHeader> {
             onTap: () => EspNodeDialog.show(context),
             borderRadius: BorderRadius.circular(12),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1C),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF00537A), Color(0xFF0076AC)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF00537A).withValues(alpha: 0.30),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.memory_rounded, size: 14, color: Color(0xFF34D399)),
+                  Icon(Icons.memory_rounded, size: 14, color: AppColors.tertiary),
                   SizedBox(width: 4),
                   Text(
                     'ESP32',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
@@ -398,7 +410,7 @@ class _ProfileModal extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text('Pengelola Kebun',
                       style: AppTextStyles.titleLg(color: AppColors.onSurface)),
-                  Text('Akun ChiliGuard',
+                  Text('Akun Phylloscanner',
                       style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)),
                 ],
               ),

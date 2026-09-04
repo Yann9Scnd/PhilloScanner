@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:chiliguard/main.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:phylloscanner/main.dart';
 
 void main() {
   testWidgets('Phylloscanner app smoke test', (WidgetTester tester) async {

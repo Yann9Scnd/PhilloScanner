@@ -1,11 +1,11 @@
--- ============================================================
+﻿-- ============================================================
 --  LEAFGUARD / PHYLLOSCANNER - MYSQL DUMP
 --  Import via phpMyAdmin (Import) atau:
 --    mysql -u root -p < leafguard.sql
 --
 --  Struktur diselaraskan dengan:
 --    - Migrasi Laravel  leafguard-api/database/migrations
---    - Skema SQLite      chiliguard/lib/database/database_helper.dart
+--    - Skema SQLite      Phylloscanner/lib/database/database_helper.dart
 --  Setelah import, pastikan .env Laravel memakai:
 --    DB_CONNECTION=mysql, DB_DATABASE=leafguard
 -- ============================================================
