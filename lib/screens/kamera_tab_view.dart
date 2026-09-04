@@ -1,3 +1,4 @@
+import 'dart:math' show cos, sin;
 import 'package:flutter/material.dart';
 import '../models/scan_result_model.dart';
 import '../services/ai_service.dart';
@@ -20,7 +21,9 @@ class _KameraTabViewState extends State<KameraTabView> {
   int _baseAngle = 90;
   int _shoulderAngle = 90;
   int _elbowAngle = 90;
+  int _camTiltAngle = 90;
   bool _flashOn = false;
+  int _armViewTab = 0; // 0 = Simulasi DOF, 1 = 2D Pose
   bool _isCapturing = false;
   bool _isAnalyzing = false;
   static const bool _isCameraOnline = false;
@@ -54,10 +57,32 @@ class _KameraTabViewState extends State<KameraTabView> {
       base: _baseAngle,
       shoulder: _shoulderAngle,
       elbow: _elbowAngle,
+      camTilt: _camTiltAngle,
     );
     if (!ok && mounted) {
       _triggerToast('Gagal terhubung ke server lengan (${_espService.armServerUrl})');
     }
+  }
+
+  void _onCamTiltChanged(double value) {
+    setState(() => _camTiltAngle = value.round());
+    _sendArmServo();
+  }
+
+  void _adjustAngle(String servo, int delta) {
+    setState(() {
+      switch (servo) {
+        case 'base':
+          _baseAngle = (_baseAngle + delta).clamp(0, 180);
+        case 'shoulder':
+          _shoulderAngle = (_shoulderAngle + delta).clamp(0, 180);
+        case 'elbow':
+          _elbowAngle = (_elbowAngle + delta).clamp(0, 180);
+        case 'camtilt':
+          _camTiltAngle = (_camTiltAngle + delta).clamp(0, 180);
+      }
+    });
+    _sendArmServo();
   }
 
   void _onBaseChanged(double value) {
@@ -75,11 +100,12 @@ class _KameraTabViewState extends State<KameraTabView> {
     _sendArmServo();
   }
 
-  void _handlePreset(int base, int shoulder, int elbow, String label) {
+  void _handlePreset(int base, int shoulder, int elbow, String label, {int camTilt = 90}) {
     setState(() {
       _baseAngle = base;
       _shoulderAngle = shoulder;
       _elbowAngle = elbow;
+      _camTiltAngle = camTilt;
     });
     _triggerToast('Lengan: $label');
     _sendArmServo();
@@ -411,7 +437,7 @@ class _KameraTabViewState extends State<KameraTabView> {
                                 const Icon(Icons.explore_rounded, size: 14, color: Color(0xFFFFC53D)),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Base: $_baseAngle°  Shoulder: $_shoulderAngle°  Elbow: $_elbowAngle°',
+                                  'Base: $_baseAngle°  Shldr: $_shoulderAngle°  Elbow: $_elbowAngle°  Cam: $_camTiltAngle°',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,
@@ -526,9 +552,8 @@ class _KameraTabViewState extends State<KameraTabView> {
           ),
           const SizedBox(height: 16),
 
-          // Servo Lengan Robot (Base / Shoulder / Elbow)
+          // ── Kendali Lengan Robot (4 Servo) ──────────────────────────────
           Container(
-            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(20),
@@ -537,102 +562,266 @@ class _KameraTabViewState extends State<KameraTabView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Kendali Lengan Robot (3 Servo)',
-                            style: AppTextStyles.titleMd(color: AppColors.onSurface),
-                          ),
-                          Text(
-                            'Geser slider untuk menggerakkan Base, Shoulder & Elbow secara real-time',
-                            style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
-                          ),
-                        ],
+                // Header row
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 8, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Kendali Lengan Robot',
+                              style: AppTextStyles.titleMd(color: AppColors.onSurface),
+                            ),
+                            Text(
+                              'Visualisasi orientasi mekanis & kalibrasi sudut',
+                              style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _baseAngle = 90;
-                          _shoulderAngle = 90;
-                          _elbowAngle = 90;
-                        });
-                        _triggerToast('Lengan: Posisi Tengah (Default)');
-                        _sendArmServo();
-                      },
-                      icon: const Icon(Icons.restart_alt_rounded, size: 16),
-                      label: const Text('Reset'),
-                    ),
-                  ],
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          '4 Servo',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _baseAngle = 90;
+                            _shoulderAngle = 90;
+                            _elbowAngle = 90;
+                            _camTiltAngle = 90;
+                          });
+                          _triggerToast('Lengan: Posisi Tengah (Default)');
+                          _sendArmServo();
+                        },
+                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                        icon: const Icon(Icons.restart_alt_rounded, size: 15),
+                        label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // ── Body: Visualisasi kiri + kontrol kanan ──────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // LEFT: Arm Visualizer panel
+                      Expanded(
+                        flex: 5,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Column(
+                            children: [
+                              // Tab selector
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                                child: Row(
+                                  children: [
+                                    _ArmViewTab(
+                                      label: 'Simulasi DOF',
+                                      selected: _armViewTab == 0,
+                                      onTap: () => setState(() => _armViewTab = 0),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    _ArmViewTab(
+                                      label: '2D Pose',
+                                      selected: _armViewTab == 1,
+                                      onTap: () => setState(() => _armViewTab = 1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              // Arm canvas
+                              SizedBox(
+                                height: 180,
+                                child: CustomPaint(
+                                  painter: _ArmPainter(
+                                    baseAngle: _baseAngle,
+                                    shoulderAngle: _shoulderAngle,
+                                    elbowAngle: _elbowAngle,
+                                    camTiltAngle: _camTiltAngle,
+                                    mode: _armViewTab,
+                                  ),
+                                  size: const Size(double.infinity, 180),
+                                ),
+                              ),
+                              // Angle summary bottom strip
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                decoration: const BoxDecoration(
+                                  border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+                                ),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 2,
+                                  children: [
+                                    _angleBadge('Base', _baseAngle, const Color(0xFF0288D1)),
+                                    _angleBadge('Shld', _shoulderAngle, const Color(0xFFF57C00)),
+                                    _angleBadge('Elb', _elbowAngle, const Color(0xFF7C3AED)),
+                                    _angleBadge('Cam', _camTiltAngle, const Color(0xFF059669)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+
+                      // RIGHT: 4 servo controls
+                      Expanded(
+                        flex: 6,
+                        child: Column(
+                          children: [
+                            _ServoControlRow(
+                              label: 'Base (M1)',
+                              shortKey: 'B',
+                              color: const Color(0xFF0288D1),
+                              angle: _baseAngle,
+                              onDecrement: () => _adjustAngle('base', -5),
+                              onIncrement: () => _adjustAngle('base', 5),
+                            ),
+                            const SizedBox(height: 6),
+                            _ServoControlRow(
+                              label: 'Shoulder (M2)',
+                              shortKey: 'S',
+                              color: const Color(0xFFF57C00),
+                              angle: _shoulderAngle,
+                              onDecrement: () => _adjustAngle('shoulder', -5),
+                              onIncrement: () => _adjustAngle('shoulder', 5),
+                            ),
+                            const SizedBox(height: 6),
+                            _ServoControlRow(
+                              label: 'Elbow (M3)',
+                              shortKey: 'E',
+                              color: const Color(0xFF7C3AED),
+                              angle: _elbowAngle,
+                              onDecrement: () => _adjustAngle('elbow', -5),
+                              onIncrement: () => _adjustAngle('elbow', 5),
+                            ),
+                            const SizedBox(height: 6),
+                            _ServoControlRow(
+                              label: 'Kamera Tilt (M4)',
+                              shortKey: 'C',
+                              color: const Color(0xFF059669),
+                              angle: _camTiltAngle,
+                              onDecrement: () => _adjustAngle('camtilt', -5),
+                              onIncrement: () => _adjustAngle('camtilt', 5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Slider section ──────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ServoSlider(
+                        label: 'Base',
+                        subtitle: 'Rotasi horizontal lengan',
+                        icon: Icons.sync_rounded,
+                        color: const Color(0xFF0288D1),
+                        value: _baseAngle,
+                        onChanged: _onBaseChanged,
+                      ),
+                      const SizedBox(height: 8),
+                      _ServoSlider(
+                        label: 'Shoulder',
+                        subtitle: 'Naik & turun bagian atas lengan',
+                        icon: Icons.vertical_align_center_rounded,
+                        color: const Color(0xFFF57C00),
+                        value: _shoulderAngle,
+                        onChanged: _onShoulderChanged,
+                      ),
+                      const SizedBox(height: 8),
+                      _ServoSlider(
+                        label: 'Elbow',
+                        subtitle: 'Menekuk jangkauan ke daun',
+                        icon: Icons.architecture_rounded,
+                        color: const Color(0xFF7C3AED),
+                        value: _elbowAngle,
+                        onChanged: _onElbowChanged,
+                      ),
+                      const SizedBox(height: 8),
+                      _ServoSlider(
+                        label: 'Kamera Tilt',
+                        subtitle: 'Kemiringan lensa kamera',
+                        icon: Icons.videocam_rounded,
+                        color: const Color(0xFF059669),
+                        value: _camTiltAngle,
+                        onChanged: _onCamTiltChanged,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
 
-                // Slider Base (rotasi horizontal)
-                _ServoSlider(
-                  label: 'Base',
-                  subtitle: 'Rotasi horizontal lengan',
-                  icon: Icons.sync_rounded,
-                  color: const Color(0xFF0288D1),
-                  value: _baseAngle,
-                  onChanged: _onBaseChanged,
-                ),
-                const SizedBox(height: 10),
-
-                // Slider Shoulder (angkat/turun)
-                _ServoSlider(
-                  label: 'Shoulder',
-                  subtitle: 'Naik & turun bagian atas lengan',
-                  icon: Icons.vertical_align_center_rounded,
-                  color: const Color(0xFFF57C00),
-                  value: _shoulderAngle,
-                  onChanged: _onShoulderChanged,
-                ),
-                const SizedBox(height: 10),
-
-                // Slider Elbow (tekuk jangkauan)
-                _ServoSlider(
-                  label: 'Elbow',
-                  subtitle: 'Menekuk jangkauan ke daun',
-                  icon: Icons.architecture_rounded,
-                  color: const Color(0xFF7C3AED),
-                  value: _elbowAngle,
-                  onChanged: _onElbowChanged,
-                ),
-                const SizedBox(height: 16),
-
-                // Quick Angle Presets
-                Text(
-                  'Preset Sudut Tanaman Cabai:',
-                  style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
-                      .copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _presetChip(
-                      label: 'Bedeng Barat (Cabai Keriting)',
-                      onTap: () => _handlePreset(40, 50, 60, 'Bedeng Barat (Cabai Keriting)'),
-                    ),
-                    _presetChip(
-                      label: 'Bedeng Timur (Cabai Rawit)',
-                      onTap: () => _handlePreset(140, 45, 55, 'Bedeng Timur (Cabai Rawit)'),
-                    ),
-                    _presetChip(
-                      label: 'Kanopi Daun Cabai',
-                      onTap: () => _handlePreset(90, 70, 45, 'Kanopi Daun Cabai'),
-                    ),
-                    _presetChip(
-                      label: 'Pintu Kebun Cabai',
-                      onTap: () => _handlePreset(180, 30, 40, 'Pintu Kebun Cabai'),
-                    ),
-                  ],
+                // ── Preset chips ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Preset Sudut Tanaman Cabai:',
+                        style: AppTextStyles.labelMd(color: AppColors.onSurfaceVariant)
+                            .copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _presetChip(
+                            label: 'Bedeng Barat (Cabai Keriting)',
+                            onTap: () => _handlePreset(40, 50, 60, 'Bedeng Barat (Cabai Keriting)', camTilt: 70),
+                          ),
+                          _presetChip(
+                            label: 'Bedeng Timur (Cabai Rawit)',
+                            onTap: () => _handlePreset(140, 45, 55, 'Bedeng Timur (Cabai Rawit)', camTilt: 80),
+                          ),
+                          _presetChip(
+                            label: 'Kanopi Daun Cabai',
+                            onTap: () => _handlePreset(90, 70, 45, 'Kanopi Daun Cabai', camTilt: 60),
+                          ),
+                          _presetChip(
+                            label: 'Pintu Kebun Cabai',
+                            onTap: () => _handlePreset(180, 30, 40, 'Pintu Kebun Cabai', camTilt: 90),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -760,6 +949,410 @@ class _KameraTabViewState extends State<KameraTabView> {
       ),
     );
   }
+}
+
+// ── Helper widgets ────────────────────────────────────────────────────────
+
+Widget _angleBadge(String label, int angle, Color color) {
+  return RichText(
+    text: TextSpan(
+      children: [
+        TextSpan(
+          text: '$label: ',
+          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+        TextSpan(
+          text: '$angle°',
+          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w800),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ArmViewTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ArmViewTab({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF0F172A) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : const Color(0xFF64748B),
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ServoControlRow extends StatelessWidget {
+  final String label;
+  final String shortKey;
+  final Color color;
+  final int angle;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+
+  const _ServoControlRow({
+    required this.label,
+    required this.shortKey,
+    required this.color,
+    required this.angle,
+    required this.onDecrement,
+    required this.onIncrement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF0F172A),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                '$angle°',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              _CtrlBtn(
+                icon: Icons.chevron_left_rounded,
+                color: color,
+                onTap: onDecrement,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Container(
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    shortKey,
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              _CtrlBtn(
+                icon: Icons.chevron_right_rounded,
+                color: color,
+                onTap: onIncrement,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CtrlBtn extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _CtrlBtn({required this.icon, required this.color, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: color.withValues(alpha: 0.25)),
+        ),
+        child: Icon(icon, size: 18, color: color),
+      ),
+    );
+  }
+}
+
+// ── 2D Arm Painter ──────────────────────────────────────────────────────────
+class _ArmPainter extends CustomPainter {
+  final int baseAngle;      // horizontal rotation (visual: left/right tilt)
+  final int shoulderAngle;  // upper arm elevation
+  final int elbowAngle;     // forearm bend
+  final int camTiltAngle;   // camera tilt
+  final int mode;           // 0=DOF, 1=2DPose
+
+  _ArmPainter({
+    required this.baseAngle,
+    required this.shoulderAngle,
+    required this.elbowAngle,
+    required this.camTiltAngle,
+    required this.mode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width * 0.42;
+    final cy = size.height * 0.84;
+    final arm1Len = size.height * 0.30;
+    final arm2Len = size.height * 0.28;
+    final arm3Len = size.height * 0.14;
+
+    // Convert angles to radians, mapping 0-180° servo to visual angles
+    // Shoulder: 90° = straight up (-π/2), 0° = forward (0), 180° = backward (-π)
+    final shoulderRad = _lerpAngle(shoulderAngle, 175.0, -10.0);
+    // Elbow: relative to upper arm
+    final elbowRad = _lerpAngle(elbowAngle, 20.0, 160.0);
+    // CamTilt: relative to forearm
+    final camRad = _lerpAngle(camTiltAngle, -80.0, 80.0);
+
+    // Joint positions (2D side-view projection)
+    final base = Offset(cx, cy);
+
+    // Upper arm
+    final shoulderEnd = Offset(
+      base.dx + arm1Len * cos(shoulderRad),
+      base.dy + arm1Len * sin(shoulderRad),
+    );
+
+    // Forearm — angle relative to upper arm
+    final forearmAngle = shoulderRad + (elbowRad - 3.14159 / 2);
+    final elbowEnd = Offset(
+      shoulderEnd.dx + arm2Len * cos(forearmAngle),
+      shoulderEnd.dy + arm2Len * sin(forearmAngle),
+    );
+
+    // Camera mount
+    final camAngle = forearmAngle + camRad;
+    final camEnd = Offset(
+      elbowEnd.dx + arm3Len * cos(camAngle),
+      elbowEnd.dy + arm3Len * sin(camAngle),
+    );
+
+    final shadowPaint = Paint()
+      ..color = const Color(0x22000000)
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    // ── Draw shadow ───────────────────────────────────────────────────────
+    for (final pts in [
+      [base, shoulderEnd],
+      [shoulderEnd, elbowEnd],
+      [elbowEnd, camEnd],
+    ]) {
+      canvas.drawLine(
+        pts[0].translate(2, 2),
+        pts[1].translate(2, 2),
+        shadowPaint,
+      );
+    }
+
+    // ── Segment colors ────────────────────────────────────────────────────
+    final colors = [
+      const Color(0xFF0F172A),   // upper arm (dark)
+      const Color(0xFF7C3AED),   // forearm (purple)
+      const Color(0xFF059669),   // cam arm (green)
+    ];
+    final thicknesses = [10.0, 8.0, 6.0];
+    final segments = [
+      [base, shoulderEnd],
+      [shoulderEnd, elbowEnd],
+      [elbowEnd, camEnd],
+    ];
+
+    for (int i = 0; i < segments.length; i++) {
+      final paint = Paint()
+        ..color = colors[i]
+        ..strokeWidth = thicknesses[i]
+        ..strokeCap = StrokeCap.round
+        ..style = PaintingStyle.stroke;
+      canvas.drawLine(segments[i][0], segments[i][1], paint);
+    }
+
+    // ── Joints ────────────────────────────────────────────────────────────
+    _drawJoint(canvas, base, 10, const Color(0xFF0F172A), const Color(0xFF94A3B8), label: 'BASE');
+    _drawJoint(canvas, shoulderEnd, 8, const Color(0xFFF57C00), Colors.white);
+    _drawJoint(canvas, elbowEnd, 7, const Color(0xFF7C3AED), Colors.white);
+
+    // Camera icon at camEnd
+    _drawCamera(canvas, camEnd, camAngle);
+
+    // ── Ground platform ───────────────────────────────────────────────────
+    final groundPaint = Paint()
+      ..color = const Color(0xFFCBD5E1)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(cx - 24, cy),
+      Offset(cx + 24, cy),
+      groundPaint,
+    );
+    // Hatch lines below
+    final hatchPaint = Paint()
+      ..color = const Color(0xFFE2E8F0)
+      ..strokeWidth = 1.5;
+    for (int i = -3; i <= 3; i++) {
+      canvas.drawLine(
+        Offset(cx + i * 7.0, cy + 2),
+        Offset(cx + i * 7.0 - 6, cy + 10),
+        hatchPaint,
+      );
+    }
+
+    // ── DOF mode: draw arc guides ─────────────────────────────────────────
+    if (mode == 0) {
+      final arcPaint = Paint()
+        ..color = const Color(0xFFE2E8F0)
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+      canvas.drawArc(
+        Rect.fromCircle(center: base, radius: arm1Len),
+        -3.14159,
+        3.14159,
+        false,
+        arcPaint,
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: shoulderEnd, radius: arm2Len * 0.6),
+        -3.14159,
+        3.14159,
+        false,
+        arcPaint..color = const Color(0xFFEDE9FE),
+      );
+    }
+  }
+
+  double _lerpAngle(int servo, double degFrom, double degTo) {
+    final t = servo / 180.0;
+    final deg = degFrom + t * (degTo - degFrom);
+    return deg * 3.14159 / 180.0;
+  }
+
+  void _drawJoint(Canvas canvas, Offset center, double radius, Color fill, Color border,
+      {String? label}) {
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()..color = border,
+    );
+    canvas.drawCircle(
+      center,
+      radius - 2,
+      Paint()..color = fill,
+    );
+    if (label != null) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: label,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, center.translate(-tp.width / 2, -tp.height - radius + 2));
+    }
+  }
+
+  void _drawCamera(Canvas canvas, Offset pos, double angle) {
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy);
+    canvas.rotate(angle);
+
+    // Camera body
+    final bodyPaint = Paint()..color = const Color(0xFF0F172A);
+    final bodyRect = RRect.fromRectAndRadius(
+      const Rect.fromLTWH(-10, -6, 20, 12),
+      const Radius.circular(3),
+    );
+    canvas.drawRRect(bodyRect, bodyPaint);
+
+    // Lens
+    canvas.drawCircle(
+      const Offset(5, 0),
+      4,
+      Paint()..color = const Color(0xFF38BDF8),
+    );
+    canvas.drawCircle(
+      const Offset(5, 0),
+      2.5,
+      Paint()..color = const Color(0xFF0EA5E9),
+    );
+    canvas.drawCircle(
+      const Offset(5, 0),
+      1,
+      Paint()..color = Colors.white,
+    );
+
+    // Tilt indicator dot
+    canvas.drawCircle(
+      const Offset(0, 0),
+      2.5,
+      Paint()..color = const Color(0xFF059669),
+    );
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_ArmPainter old) =>
+      old.baseAngle != baseAngle ||
+      old.shoulderAngle != shoulderAngle ||
+      old.elbowAngle != elbowAngle ||
+      old.camTiltAngle != camTiltAngle ||
+      old.mode != mode;
 }
 
 class _ServoSlider extends StatelessWidget {

@@ -100,10 +100,11 @@ class EspService {
     int base = 90,
     int shoulder = 90,
     int elbow = 90,
+    int camTilt = 90,
   }) async {
     try {
       final uri = Uri.parse(
-        '$armServerUrl/set-servo?base=$base&shoulder=$shoulder&elbow=$elbow',
+        '$armServerUrl/set-servo?base=$base&shoulder=$shoulder&elbow=$elbow&cam_tilt=$camTilt',
       );
       final res = await _client.get(uri).timeout(const Duration(seconds: 2));
       return res.statusCode == 200;
